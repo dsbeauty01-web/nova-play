@@ -1,0 +1,23 @@
+{
+ "version": "upgroove-1",
+ "talkBody": "nova_idle2",
+ "gameBody": "nova_idlegroove_v2",
+ "music": {
+  "_adapt": "[ADAPT 2026-09-30] Measured off the live Freeze, not guessed — the pack shipped bpm 129 / beatOffsetS 0.0 and both are wrong. animal-freeze.html:350 BPM=129.2, :351 BEAT_OFFSET=0.151s (the analyzer's beat-1 phase); beta/freeze2/script.json already carries the same two numbers. The offset matters most: 0.151s of constant bias is larger than half the ON window (onS 0.13), so with 0.0 almost every bounce would have graded 'near' no matter how well the child danced. Song is 132.33s; round 3 starts at 80s and needs ~13s, inside it.",
+  "song": "/freezegame/animal-freeze-song.mp3", "bpm": 129.2, "beatOffsetS": 0.151, "vol": 0.7
+ },
+ "everyBeats": 2,
+ "_everyBeats": "bounce on every 2nd beat: at 129 bpm that is one bounce every 0.93s — a comfortable pace for 5-8 year olds",
+ "rounds": [
+  { "n": 1, "songStartS": 0.0,  "watchBeats": 4, "bounces": 12, "intro": null },
+  { "n": 2, "songStartS": 40.0, "watchBeats": 0, "bounces": 12, "intro": "tr.round2" },
+  { "n": 3, "songStartS": 80.0, "watchBeats": 0, "bounces": 12, "intro": "tr.round3" }
+ ],
+ "bounce": { "visMin": 0.35, "smoothTau": 0.1, "minDip": 0.05, "hyst": 0.02, "maxFallS": 0.9, "minGapS": 0.28 },
+ "latencyS": 0.08, "onS": 0.13, "nearS": 0.23,
+ "_timing": "latencyS = camera+model delay (tune with the proof in UPGROOVE.md §6). onS/nearS = how close to the beat counts as ON / close.",
+ "lights": { "mirror": true, "ringLeadS": 0.6 },
+ "points": { "on": 100, "near": 40, "streakFrom": 3, "streakMult": 2 },
+ "praise": { "every": 3, "streakAt": 5 },
+ "medals": { "silverFrom": 0.4, "goldFrom": 0.7 }
+}

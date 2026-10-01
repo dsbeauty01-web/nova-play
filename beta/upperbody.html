@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nova · Upper Body Isolation</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<style>
+:root{--amber:#e6a93a;--amber-hot:#f2c66d;--ink:#2a2140;--stage:#1a0f2e}
+html,body{margin:0;height:100%;background:var(--stage);font-family:Nunito,system-ui;color:#fff;overflow:hidden}
+#stage{position:fixed;inset:0;display:flex}
+#refWrap,#camWrap{position:relative;width:50vw;height:100vh;overflow:hidden;background:var(--stage)}
+body[data-phase=intro] #refWrap,body[data-phase=between] #refWrap,body[data-phase=ending] #refWrap{width:62vw}
+body[data-phase=intro] #camWrap,body[data-phase=between] #camWrap,body[data-phase=ending] #camWrap{width:38vw}
+#refWrap,#camWrap{transition:width .5s ease}
+#refVid{position:absolute;left:50%;top:0;height:100vh;width:auto;transform:translateX(-50%);z-index:2}
+#refAmbient{position:absolute;left:50%;top:50%;height:120vh;width:auto;transform:translate(-50%,-50%) scaleX(2.4);filter:blur(30px) saturate(1.1);opacity:.85;z-index:1}
+#usercam{width:100%;height:100%;object-fit:contain;transform:scaleX(-1);background:#120a22}
+#fx,#fxRef{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6}
+.tagc{position:absolute;left:14px;top:14px;z-index:8;background:rgba(0,0,0,.45);padding:5px 14px;border-radius:999px;font-weight:800;font-size:13px}
+#hud{position:fixed;top:1.6vh;left:0;right:0;display:flex;gap:16px;justify-content:center;align-items:center;z-index:50}
+#score{font-family:'Baloo 2';font-size:44px;font-weight:800;color:var(--amber);font-variant-numeric:tabular-nums;text-shadow:0 2px 12px rgba(0,0,0,.5)}
+#tag{background:rgba(124,92,191,.85);color:#fff;border-radius:999px;padding:5px 16px;font-weight:800}
+#dots i{display:inline-block;width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.2);margin:0 3px}#dots i.on{background:var(--amber)}
+#cap{position:fixed;left:0;right:0;bottom:5vh;text-align:center;z-index:50;font-family:'Baloo 2';font-weight:800;font-size:clamp(20px,3vw,36px);text-shadow:0 2px 18px rgba(0,0,0,.7)}
+#dbg{position:fixed;left:8px;bottom:8px;z-index:99;font:600 12px monospace;background:rgba(0,0,0,.6);color:#9f9;padding:6px 10px;border-radius:8px;white-space:pre}
+#gate,#banner,#gateArms,#card{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(26,15,46,.86);z-index:90;text-align:center;padding:24px}
+#gate button,#card button{font:800 26px 'Baloo 2';padding:16px 40px;border:0;border-radius:18px;background:var(--amber);color:var(--ink);cursor:pointer;margin-top:18px}
+#banner{background:#3a0d0d;color:#ffb3b3;font-weight:800;font-size:22px}
+#ring{width:120px;height:120px;border-radius:50%;border:6px solid rgba(255,255,255,.25);border-top-color:var(--amber);margin-top:18px}#ring.ok{border-color:#7ddba3}
+#card h2{font-family:'Baloo 2';font-size:56px;margin:0;color:var(--amber)}#card p{font-size:22px;margin:6px 0}
+#scorecard{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(26,15,46,.9);z-index:95;font-family:'Baloo 2'}
+#scorecard h1{font-size:64px;color:var(--amber);margin:0}#scorecard p{font-size:24px;margin:8px 0}#scorecard button{font:800 24px 'Baloo 2';padding:14px 36px;border:0;border-radius:16px;background:var(--amber);color:var(--ink);margin-top:20px;cursor:pointer}
+.hidden{display:none!important}
+</style></head><body data-phase="intro">
+<div id="stage">
+  <div id="refWrap"><video id="refAmbient" muted playsinline loop></video><video id="refVid" playsinline preload="auto"></video><canvas id="fxRef"></canvas><div class="tagc">NOVA — copy the torso slides · hips frozen</div></div>
+  <div id="camWrap"><video id="usercam" autoplay muted playsinline></video><canvas id="fx"></canvas><div class="tagc">YOU</div></div>
+  <div id="hud"><div id="dots"></div><div id="score">0</div><div id="tag">UPPER BODY</div></div>
+  <div id="cap"></div><div id="dbg"></div>
+  <div id="gate"><div style="font:800 34px 'Baloo 2'">Upper Body Isolation</div><div style="opacity:.8;margin-top:6px">hands on your waist — the torso slides, the hips freeze</div><button id="start">▶ Start</button></div>
+  <div id="gateArms" class="hidden"><div style="font:800 30px 'Baloo 2'">Step back — I need to see your arms and hips</div><div id="ring"></div></div>
+  <div id="banner" class="hidden"></div>
+  <div id="card" class="hidden"><h2 id="cardTitle"></h2><p id="cardLine"></p><button id="cardBtn">Ready</button></div>
+  <div id="scorecard"><h1 id="finalScore">0</h1><p id="finalLine"></p><button id="again">PLAY AGAIN</button></div>
+</div>
+<script type="module">
+/* UPPER BODY — adult tier · video-led (her 38s routine) · rib slide with true isolation · hoop lights · 4 rounds (slow, slow, fast, fast) */
+import { createKit, RULES, grade } from '../shared/game-kit.js';
+import { createLights } from '../shared/nova-lights.js';
+import { createMoves } from '../shared/move-recipes.js';
+const $ = id => document.getElementById(id);
+const Q = new URLSearchParams(location.search);
+const K = await createKit({ tier:'adult', mirror:true, game:'upperbody', detectRef:false, refCandidates:['../media/upperbody-ref.mp4','../media/rapa_src.mp4','../media/rapa.mp4'] });
+
+/* ───────── the light layer + the move recipes (nova-moves-v4) ─────────
+   THIS GAME'S REAL ACTION LIST, read off the code rather than assumed (WIRING-ALL-GAMES.md asked for it):
+     · rib slide RIGHT and LEFT  — 10 timed targets, judged by RULES.ribSlide with hip isolation
+     · flow pulse                — 4 soft "keep travelling" beats (FLOW), never scored
+     · the finish                — one 1s freeze hold at FINISH_AT
+     · a hip-wobble nudge        — a correction, not an action
+   The pack expected upper.slide + upper.popL/popR. There is NO shoulder pop in this game, so the two pop
+   recipes go unused; the slides are upper.slide, and the two moments that have no upper.* recipe reuse the
+   ones that fit exactly: the flow pulse is freeze.dance (every moving joint glows with its speed) and the
+   finish is freeze.stop (frost + the wobbling part + STATUE!).
+   #usercam here is object-fit:contain and the module reads that off the CSS itself. */
+const lights = createLights($('fx'), { video: $('usercam'), debug: Q.get('dots') === '1' });
+const moves  = createMoves(lights, { mirror: true });                    // = createKit's mirror:true
+let OPEN = null;
+
+// ── the measured map (frame-verified, sides = screen-space of the kid's mirrored camera) ──
+const DEMO_END = 13.5, FINISH_AT = 35.2;
+const TARGETS = [ {t:16.10,dir:'R'},{t:17.37,dir:'L'},{t:23.00,dir:'R'},{t:24.30,dir:'L'},{t:28.07,dir:'R'},{t:29.37,dir:'L'},
+                  {t:31.90,dir:'R'},{t:32.50,dir:'L'},{t:33.27,dir:'R'},{t:34.33,dir:'L'} ];
+const FLOW = [19.55, 21.20, 25.55, 26.80];                         // the old front/back beats — shown as soft pulses, never scored
+const ROUNDS = [ {n:1,rate:1.0,label:'ROUND 1 · SLOW',win:0.9,lead:1.1}, {n:2,rate:1.0,label:'ROUND 2 · SLOW',win:0.8,lead:1.0},
+                 {n:3,rate:1.25,label:'ROUND 3 · FAST',win:0.65,lead:0.85}, {n:4,rate:1.25,label:'ROUND 4 · FAST',win:0.55,lead:0.75} ];
+const MIRROR=true;
+let lastSlide=null;
+let round=0, targets=[], ti=0, flows=[], score=0, streak=0, hits={}, iso={}, side={R:0,L:0}, calDone=false, holdWin=null, done=false, lastCue=null, wob=0, hipLineSaid=false;
+
+/* [MIGRATED] the hoop cue / hoop hit / flow pulse were kit LightEngine calls; they are recipes now, so the
+   chest rail shows the slide and the frozen hips instead of a hoop. Names kept so the call sites read the same. */
+function hoopCue(dir, winMs, leadMs){ OPEN = 'upper.slide'; moves.cue(OPEN); }
+function hoopHit(quality, pts){ moves.result('upper.slide', quality === 'wrong' ? 'near' : 'ok', lastSlide); OPEN = null; setTimeout(() => moves.clear('upper.slide'), 700); }
+function flowPulse(){ moves.cue('freeze.dance'); setTimeout(() => moves.clear('freeze.dance'), 650); }   // a soft pulse, never scored
+
+function startRound(i){ round=i; const R=ROUNDS[i]; K.hud.tag(R.label); K.hud.dots(i+1,4);
+  targets = TARGETS.map(x=>({ ...x, hit:false, missed:false, lit:false })); flows = FLOW.map(t=>({t,lit:false})); ti=0; holdWin=null; hits[i]=0; iso[i]=0; wob=0;
+  K.refVid.playbackRate=R.rate; K.refVid.currentTime = i===0 ? 0 : DEMO_END; K.setPhase('game'); document.body.dataset.phase='game';
+  if (i===0) K.E.startCal();
+  K.say(i===0 ? 'Hands on your waist. Watch first — then copy.' : R.rate>1 ? 'Faster now. Same slides, hips frozen.' : 'Again — cleaner. Ribs only.');
+  K.refVid.play().catch(()=>{}); }
+
+K.onClock = (t) => { if (done) return; const R=ROUNDS[round];
+  if (round===0 && !calDone && t>=DEMO_END){ K.E.finishCal(); calDone=true; K.say('Now you — slide RIGHT... LEFT... hips frozen.'); }
+  const vt = t;                                                                                    // targets are in VIDEO time (playbackRate handled by the video itself)
+  const nxt = targets[ti];
+  if (nxt && !nxt.lit && vt >= nxt.t - R.lead){ nxt.lit=true; hoopCue(nxt.dir, R.win*2000, R.lead*1000); K.DBG.cues++; }
+  if (nxt && !nxt.hit && vt > nxt.t + R.win){ nxt.missed=true; ti++; OPEN=null; moves.result('upper.slide','miss',lastSlide); moves.clear('upper.slide'); }
+  for (const f of flows){ if(!f.lit && vt >= f.t-0.35){ f.lit=true; flowPulse(); } }
+  if (vt >= FINISH_AT && !holdWin){ holdWin={ t0:performance.now(), broke:false, samples:0 }; K.setPhase('hold'); OPEN=null; moves.clear(); moves.cue('freeze.stop'); K.say('Freeze the pose.'); }
+  if (holdWin && performance.now()-holdWin.t0 >= 1000){ const held = !holdWin.broke && holdWin.samples>5; if (held){ score+=50; K.flyText('FROZEN!'); K.ding(); } moves.result('freeze.stop', held ? 'ok' : 'miss', null); setTimeout(() => moves.clear('freeze.stop'), 900); holdWin=null; K.refVid.pause(); endRound(); }
+  if (K.refVid.ended && !holdWin) endRound(); };
+
+K.onKid = (out, k) => { if (k) lights.feed(k);                                   // feed EVERY frame, open action or not
+  if (done || K.phase==='hold' && holdWin){ if(holdWin){ const f=RULES.freeze(K.E,0.12); holdWin.samples++; if(!f.still) holdWin.broke=true; if (k) moves.live('freeze.stop', k); } return; }
+  if (K.phase!=='game' || !calDone) return;
+  if (OPEN && k) lastSlide = moves.live(OPEN, k);                                // the rail rides the real slide
+  const R=ROUNDS[round], vt=K.refVid.currentTime, nxt=targets[ti];
+  // hip wobble (sustained only) → one line per game. [MIGRATED] the warm light is gone: upper.slide's rail
+  // already shows the hips-still state continuously, which says the same thing without a second signal.
+  const stillHips = K.E.isolated('shoulderC',['hipC'],0.12); wob = stillHips ? 0 : wob+16;
+  if (wob>400){ wob=0; if(!hipLineSaid){ hipLineSaid=true; K.say('Hips frozen — only the ribs travel.'); } }
+  if (!nxt || nxt.hit || vt < nxt.t - R.win) return;
+  const r = RULES.ribSlide(K.E); if (!r) return;
+  const s = MIRROR ? (r.side==='L'?'R':'L') : r.side;            // engine works in camera space
+  const g = grade(vt, nxt.t, R.win); if (g===null) return;
+  const wrong = s!==nxt.dir; if (wrong && Math.abs(vt-nxt.t) > R.win*0.5) return;
+  nxt.hit=true; ti++;
+  let pts = R.rate===1 ? 15 : 10; pts = Math.round(pts*({PERFECT:1.5,GOOD:1.2,OK:1}[g]));
+  if (wrong) pts=Math.round(pts/2);
+  if (r.iso && R.rate===1){ pts+=10; iso[round]++; }   // [MIGRATED] isoShimmer dropped: upper.slide's flash already marks a clean isolation
+  if (R.rate>1){ streak++; if(streak>=3) pts*=2; } else streak=0;
+  if (round===3) pts+=5;
+  score+=pts; hits[round]++; if(!wrong) side[nxt.dir]++; K.DBG.hits++;
+  hoopHit(r.iso?'iso':wrong?'wrong':'good', pts); if (g==='PERFECT') K.flyText('PERFECT'); K.tick(streak); K.hud.score(score);
+  K.note(`ub_hit round=${round+1} dir=${nxt.dir} grade=${g} iso=${!!r.iso} wrong=${wrong} streak=${streak}`); };
+
+function endRound(){ if (done) return; const R=ROUNDS[round], h=hits[round]||0, v = h>=8?'NAILED':h>=5?'GOOD':'TRIED';
+  if (v==='NAILED') score+=30; K.hud.score(score);
+  if (round<3){ K.setPhase('between'); document.body.dataset.phase='between';
+    const weak = side.R<side.L ? 'right' : 'left';
+    $('cardTitle').textContent=`${v} · ${h}/10`; $('cardLine').textContent = `${iso[round]||0} true isolations. Next round: reach the light further on the ${weak}.`;
+    $('cardBtn').textContent = `Ready for round ${round+2}`; $('card').classList.remove('hidden');
+    K.say(`${v}. ${h} of ten. Reach further on the ${weak} next round. Ready?`);
+    $('cardBtn').onclick = () => { $('card').classList.add('hidden'); startRound(round+1); };
+  } else { done=true; K.stop(); K.setPhase('ending'); document.body.dataset.phase='ending';
+    const total = Object.values(hits).reduce((a,b)=>a+b,0), allNailed = [0,1,2,3].every(i=>(hits[i]||0)>=8); if (allNailed) score+=100;
+    const weak = side.R<side.L ? 'right' : 'left';
+    K.scorecard(score, `${total} slides · ${Object.values(iso).reduce((a,b)=>a+b,0)} true isolations · next time lead the ${weak} side from the ribs, not the shoulders.`);
+    K.say(`${score} points. Lead the ${weak} side from the ribs next time. Good work.`);
+    K.pulse({ score, hits, iso, side, allNailed }); } }
+
+$('again').onclick=()=>location.reload();
+K.boot((ref)=>{ K.start(); startRound(0); });
+</script></body></html>

@@ -1,0 +1,160 @@
+{
+ "version": "freeze2-1",
+ "talkBody": "nova_idle2",
+ "gameBody": "nova_idlegroove_v2",
+ "music": {
+  "_adapt": "[ADAPT 2026-09-27 #2] Measured off the live Freeze, not guessed: animal-freeze.html:328 song (made absolute — a relative path from /beta/ resolves to /beta/freezegame/), :350 BPM=129.2, :351 BEAT_OFFSET=0.151s (the analyzer's beat-1 phase), :1077 MUSIC_GAIN 0.6 / BEAT_GAIN 0.85. The bare beat has NO asset: it is synthesized offline in-page (:1109) — see makeBeat() in freeze2.html. Song is 132.33s; the last hold of round 3 ends at 125.97s, inside it.",
+  "song": "/freezegame/animal-freeze-song.mp3",
+  "bareBeat": "synth:kick+woodblock",
+  "bpm": 129.2,
+  "beatOffsetS": 0.151,
+  "melodyVol": 0.6,
+  "beatVol": 0.85
+ },
+ "tune": {
+  "_note": "judges.js tunables (per-second energy) + the hold judge. Floors from the QA bench; the CLI re-verifies with the harness.",
+  "_measured": "[2026-09-27] Re-verified as instructed, with test/energy-probe.html (game-kit's real MoveNet, real body, Chrome fake camera) — energy in shoulder-widths/s, p50/p90: motionless body 0.43/0.58 · standing sway 0.80/1.40 · slow dance 0.92/1.69 · energetic dance 2.42/3.93. The shipped moveFloor 0.9 + moveK 4.0 (uncapped) failed: at the real calibration reading (0.43 = the detector's jitter floor, NOT the child) thr.move became 1.72, and test/freeze2_realdata_test.mjs judges a dancing body 'held' in 90% of windows there — every freeze a free star. thr.move is now clamped to 1.0-1.4 (moveFloor/moveCeil), the band where a motionless body is held 100% of windows, a wobbly standing one ~83-90%, and an energetic dancer is caught in 92-100%. Sweep: scratchpad probe/sweep.mjs; traces in test/evidence/freeze2/.",
+  "visMin": 0.4,
+  "teleport": 0.8,
+  "stillDefault": 0.25,
+  "moveFloor": 1.1,
+  "moveK": 2.5,
+  "moveCeil": 1.4,
+  "stillFloor": 0.4,
+  "stillK": 1.8,
+  "reachDefault": 0.25,
+  "reachFloor": 0.15,
+  "reachFrac": 0.4,
+  "lastUpHoldS": 0.6,
+  "elbowFrac": 0.4,
+  "upHead": 0.95,
+  "upFrac": 0.75,
+  "outX": 0.9,
+  "outY": 0.7,
+  "headUp": 0.3,
+  "headX": 1.1,
+  "headClose": 1.8,
+  "hitHoldS": 0.15,
+  "freezeHoldS": 0.8,
+  "trickIgnoreS": 0.25,
+  "gotchaPoseS": 0.15,
+  "gotchaMoveK": 1.4,
+  "gotchaMoveS": 0.35,
+  "lostVoidS": 2.0,
+  "stallS": 0.5,
+  "stopGraceS": 0.6,
+  "breakHoldS": 0.25,
+  "almostFrom": 0.6,
+  "seenMin": 0.6
+ },
+ "calibrationS": 2.0,
+ "rounds": [
+  {
+   "n": 1,
+   "songStartS": 0.0,
+   "intro": null,
+   "beatsBetween": 20,
+   "freezes": [
+    {
+     "animal": "flamingo",
+     "hold": 2.5,
+     "warn": true
+    },
+    {
+     "animal": "frog",
+     "hold": 2.5,
+     "warn": true
+    },
+    {
+     "animal": "bear",
+     "hold": 2.5,
+     "warn": false
+    },
+    {
+     "animal": "flamingo",
+     "hold": 2.5,
+     "warn": true
+    }
+   ]
+  },
+  {
+   "n": 2,
+   "songStartS": 48.0,
+   "intro": "tr.round2",
+   "beatsBetween": 16,
+   "freezes": [
+    {
+     "animal": "frog",
+     "hold": 2.5,
+     "warn": true
+    },
+    {
+     "animal": "bear",
+     "hold": 2.5,
+     "warn": false
+    },
+    {
+     "animal": "flamingo",
+     "hold": 2.5,
+     "warn": false,
+     "fakeout": true,
+     "beatsAfterPrev": 8
+    },
+    {
+     "animal": "frog",
+     "hold": 2.5,
+     "warn": true
+    }
+   ]
+  },
+  {
+   "n": 3,
+   "songStartS": 88.0,
+   "intro": "tr.round3",
+   "beatsBetween": 14,
+   "freezes": [
+    {
+     "animal": "bear",
+     "hold": 2.5,
+     "warn": false
+    },
+    {
+     "animal": "flamingo",
+     "hold": 2.5,
+     "warn": true
+    },
+    {
+     "animal": "frog",
+     "hold": 2.5,
+     "warn": false
+    },
+    {
+     "animal": "star",
+     "hold": 5.0,
+     "warn": true,
+     "final": true
+    }
+   ]
+  }
+ ],
+ "_rounds": "Freeze k of a round fires at songStartS + (k+1)\u00d7beatsBetween beats (or beatsAfterPrev for a fake-out stab) \u2014 always on the beat. warn=true plays the recorded 'Get ready\u2026' 2.8s before; fake-outs never warn.",
+ "points": {
+  "held": 100,
+  "almost": 40,
+  "missed": 0,
+  "starBonus": 200,
+  "streakFrom": 3,
+  "streakMult": 2
+ },
+ "warnLeadS": 2.8,
+ "verdictDelayMs": 120,
+ "breather": {
+  "startTimeoutMs": 3000,
+  "maxMs": 12000,
+  "afterLineMs": 1500
+ },
+ "medals": {
+  "silverFrom": 0.5,
+  "goldFrom": 0.8
+ }
+}

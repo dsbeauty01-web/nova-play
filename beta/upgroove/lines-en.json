@@ -1,0 +1,13 @@
+{
+ "_note": "Recorded once through her Realtime voice (tools/capture_realtime_lines.py) — one voice. HE: lines-he-m.json / lines-he-f.json, same ids.",
+ "intro.watch":    "Watch me — bounce on the big beat!",
+ "go.join":        "Your turn — bounce with me!",
+ "fb.yes":         "Yes!",
+ "fb.groovy":      "Groovy!",
+ "fb.streak":      "You've got the groove!",
+ "tr.round2":      "Round two — keep bouncing!",
+ "tr.round3":      "Last round — biggest bounces!",
+ "fallback.card1": "So groovy! Round two!",
+ "fallback.card2": "Amazing bouncing! Last round!",
+ "fallback.end":   "What a groover! See you tomorrow!"
+}

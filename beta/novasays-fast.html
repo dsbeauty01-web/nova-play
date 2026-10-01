@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nova Says</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<!-- [ADAPT 2026-09-27] EXACT tag from animal-freeze.html:12 — was `livekit-client.umd.js`,
+     now `.umd.min.js`. Not cosmetic: the un-minified path is what the pack guessed at, and a
+     page that loads no LiveKit client is exactly the bug that killed every play on 2026-09-26
+     (novaMain.srcObject stays null, watchNova calls it "down", the game ends itself at 20s). -->
+<script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
+<style>
+:root{--gold:#ffc23e;--gold-hot:#ffdf7e;--ink:#2a2140;--stage:#1f1338;--purple:#b98cff}
+html,body{margin:0;height:100%;background:var(--stage);font-family:Nunito,system-ui;color:#fff;overflow:hidden}
+#stage{position:fixed;inset:0;display:flex}
+#stage.wobble{animation:wob .28s ease-in-out}@keyframes wob{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+#novaWrap,#camWrap{position:relative;height:100vh;overflow:hidden;transition:width .45s ease}
+#novaWrap{width:50vw;background:#2b1b4a}#camWrap{width:50vw;background:#120a22}
+body[data-phase=intro] #novaWrap,body[data-phase=ending] #novaWrap{width:64vw}body[data-phase=intro] #camWrap,body[data-phase=ending] #camWrap{width:36vw}
+#novaMain{position:absolute;left:50%;top:0;height:100vh;width:auto;transform:translateX(-50%);z-index:2}
+#novaAmbient{position:absolute;left:50%;top:50%;height:130vh;transform:translate(-50%,-50%) scaleX(2.4);filter:blur(30px);opacity:.85;z-index:1}
+#usercam{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+#fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6}
+/* THE COMMAND CARD — the big pose picture, shown on EVERY command (real and trick alike) */
+#pose{position:absolute;left:50%;top:6vh;transform:translateX(-50%) scale(.6);opacity:0;z-index:8;background:rgba(20,10,40,.72);border:4px solid var(--gold);border-radius:28px;padding:10px 18px 4px;transition:transform .12s,opacity .12s;text-align:center}
+#pose.on{opacity:1;transform:translateX(-50%) scale(1)}
+#pose svg{width:clamp(120px,16vw,200px);height:auto;display:block}
+#pose .lbl{font:800 clamp(18px,2.4vw,30px) 'Baloo 2';color:var(--gold-hot)}
+#timer{position:absolute;left:0;bottom:0;height:10px;background:linear-gradient(90deg,#ffdf7e,#ffc23e);z-index:9;width:0}
+#hud{position:fixed;top:1.6vh;left:0;right:0;display:flex;gap:16px;justify-content:center;align-items:center;z-index:50;pointer-events:none}
+.pill{background:rgba(0,0,0,.4);border-radius:999px;padding:6px 16px;font-weight:800}
+#stars{font:800 38px 'Baloo 2';color:var(--gold)}
+#combo{font:800 30px 'Baloo 2';color:#ffb27d;min-width:90px;text-align:center}
+#dots i{display:inline-block;width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,.22);margin:0 3px}#dots i.on{background:var(--gold)}
+#score,#tag{display:none}
+#pop{position:fixed;left:0;right:0;top:40vh;text-align:center;z-index:70;pointer-events:none;font:800 clamp(40px,8vw,110px) 'Baloo 2';opacity:0}
+#pop.show{animation:popin .75s ease-out forwards}@keyframes popin{0%{opacity:0;transform:scale(.4)}20%{opacity:1;transform:scale(1.12)}35%{transform:scale(1)}100%{opacity:0;transform:translateY(-40px)}}
+#cap{position:fixed;left:0;right:0;bottom:4vh;text-align:center;z-index:50;font:800 clamp(22px,3.2vw,38px) 'Baloo 2';text-shadow:0 2px 16px rgba(0,0,0,.7)}
+#dbg{position:fixed;left:8px;bottom:8px;z-index:99;font:600 12px monospace;background:rgba(0,0,0,.65);color:#9f9;padding:6px 10px;border-radius:8px;white-space:pre}
+body[data-debug="0"] #dbg{display:none}
+#gate,#banner,#gateArms,#card,#scorecard{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(31,19,56,.9);z-index:90;text-align:center;padding:24px}
+#gateArms{background:rgba(31,19,56,.5)}#banner{background:#3a0d0d;color:#ffb3b3;font-weight:800;font-size:22px}
+button.big{font:800 30px 'Baloo 2';padding:16px 46px;border:0;border-radius:18px;background:var(--gold);color:var(--ink);cursor:pointer;margin-top:18px}
+#ring{width:110px;height:110px;border-radius:50%;border:6px solid rgba(255,255,255,.25);border-top-color:var(--gold);margin-top:18px}#ring.ok{border-color:#7ddba3}
+#gateMsg{font:800 30px 'Baloo 2'}
+#card h2,#scorecard h1{font:800 64px 'Baloo 2';margin:0;color:var(--gold)}#card p,#scorecard p{font-size:24px;margin:8px 0}
+#medal{font-size:120px;line-height:1}#scorecard{display:none}
+#okBtn{position:fixed;right:24px;bottom:24px;z-index:95}
+#pause,#exit{position:fixed;top:1.6vh;z-index:60;background:rgba(0,0,0,.45);color:#fff;border:0;border-radius:12px;padding:8px 12px;font-size:18px;cursor:pointer}#pause{right:64px}#exit{right:14px}
+.hidden{display:none!important}
+</style></head><body data-phase="intro" data-debug="1">
+<div id="stage">
+  <div id="novaWrap"><video id="novaAmbient" autoplay muted playsinline></video><video id="novaMain" autoplay muted playsinline></video></div>
+  <div id="camWrap"><video id="usercam" autoplay muted playsinline></video><canvas id="fx"></canvas><div id="pose"></div><div id="timer"></div></div>
+</div>
+<div id="hud"><div id="dots"></div><div class="pill"><span id="stars">⭐ 0</span></div><div id="combo"></div><div class="pill" id="tricks">🎯 0/0</div><div id="score"></div><div id="tag"></div></div>
+<div id="pop"></div><div id="cap"></div><div id="dbg"></div>
+<button id="pause">⏸</button><button id="exit">✕</button>
+<div id="gate"><div style="font:800 48px 'Baloo 2'">Nova Says</div><div id="gateSub" style="opacity:.85;margin-top:6px;max-width:560px;font-size:20px"></div><button id="start" class="big">▶</button></div>
+<div id="gateArms" class="hidden"><div id="gateMsg"></div><div id="ring"></div></div>
+<div id="card" class="hidden"><h2 id="cardStars"></h2><p id="cardLine"></p></div>
+<div id="scorecard"><div id="medal"></div><h1 id="finalScore">0</h1><p id="finalLine"></p><button id="again" class="big">↻</button></div>
+<div id="banner" class="hidden"></div>
+<script type="module">
+/* NOVA SAYS — FAST. Built for SPEED: no demo gestures after practice, lines at game-show pace, the next command fires
+   the moment the child gets it right, windows shrink as he succeeds, and the classic trap ("Nova says arms up… ARMS OUT!").
+   Her brain is live only at the intro and the ending; the rounds are all page + camera. Judges = beta/nsfast/judges.js (tested). */
+import { createKit } from '../shared/game-kit.js';
+import { createJudges } from '../beta/nsfast/judges.js';
+import { createLights } from '../shared/nova-lights.js';
+import { createMoves } from '../shared/move-recipes.js';
+const $ = id => document.getElementById(id);
+const Q = new URLSearchParams(location.search);
+const LANG = (Q.get('lang') || localStorage.getItem('nova-lang') || 'en') === 'he' ? 'he' : 'en';
+const G = (Q.get('g') || localStorage.getItem('nova-gender') || 'm') === 'f' ? 'f' : 'm';
+const LKEY = LANG === 'he' ? `he-${G}` : 'en';
+if (Q.get('debug') === '0') document.body.dataset.debug = '0';
+if (LANG === 'he') for (const id of ['cap','card','scorecard','gateArms','gate']) $(id).dir = 'rtl';
+const UI = LANG === 'he'
+  ? { sub:'כשנובה אומרת "נובה אומרת" — עושים. בלי זה — לא זזים!', gate:'תתרחק קצת — שאראה את הכתפיים', tricks:'תרגילים שלא תפסו אותך', gotcha:'תפסתי!', held:'לא זזת!', combo:'קומבו',
+      poses:{ armsUp:'ידיים למעלה', armsOut:'ידיים לצדדים', handsOnHead:'ידיים על הראש', oneArm:'יד אחת למעלה', freeze:'קפוא!' } }
+  : { sub:'When Nova says "Nova says" — do it. If she doesn\'t — don\'t move!', gate:'Step back — show me your shoulders', tricks:'tricks survived', gotcha:'GOTCHA!', held:'You didn\'t move!', combo:'COMBO',
+      poses:{ armsUp:'Arms up', armsOut:'Arms out', handsOnHead:'Hands on head', oneArm:'One arm up', freeze:'Freeze!' } };
+$('gateSub').textContent = UI.sub; $('gateMsg').textContent = UI.gate;
+
+// ───────── data + engines ─────────
+const S = await (await fetch('../beta/nsfast/script.json')).json();
+const LINES = await (await fetch(`../beta/nsfast/lines-${LKEY}.json`)).json();
+let MANIFEST = {}; try { MANIFEST = await (await fetch(`../audio/nsfast/${LKEY}/manifest.json`)).json(); } catch(e){}
+const K = await createKit({ tier:'kids', mirror:true, game:'novasays', lang:LANG, refCandidates:[] });
+const J = createJudges(S.tune);
+const now = () => performance.now() / 1000;
+const T0 = now();
+
+/* ───────── the light layer + the move recipes (nova-moves-v4, WIRING-ALL-GAMES.md) ─────────
+   The recipes only SHOW. beta/nsfast/judges.js still decides every star — nothing below reads a result
+   the judge did not produce. #usercam here is object-fit:cover, which the module now reads off the CSS
+   itself, so this page passes no `fit`. */
+const lights = createLights($('fx'), { video: $('usercam'), debug: Q.get('dots') === '1' });
+const moves  = createMoves(lights, { mirror: true });                      // [ADAPT] = createKit's mirror:true above
+/* [ADAPT] the game's command ids are not the recipe ids:
+     handsOnHead → says.handsHead   (same move, different spelling)
+     oneArm      → says.rightUp     (WIRING-ALL-GAMES.md: FAST's "one arm up" is side-free, so cue the
+                                     right arm but let the judge accept either — the recipe only draws)
+     freeze      → freeze.stop      (FAST has a hold-still command and there is no says.freeze; freeze.stop
+                                     is exactly this moment — ice, the wobbling part, STATUE!/ALMOST!)
+   A trick is the same picture with no "Nova says", so every trick uses says.trick whatever the pose is. */
+const MOVE_ID = { armsUp:'says.armsUp', armsOut:'says.armsOut', handsOnHead:'says.handsHead',
+                  oneArm:'says.rightUp', freeze:'freeze.stop' };
+const moveFor = (cmd, kind) => kind === 'trick' ? 'says.trick' : (MOVE_ID[cmd] || null);
+let OPEN = null;                                                           // the one open action, or null
+
+// ───────── the pose pictures (simple, bold, readable by a 5-year-old) ─────────
+const FIG = (arms) => `<svg viewBox="0 0 120 150"><g stroke="#ffdf7e" stroke-width="9" stroke-linecap="round" fill="none">
+  <circle cx="60" cy="28" r="15" fill="#ffdf7e" stroke="none"/><line x1="60" y1="45" x2="60" y2="95"/><line x1="60" y1="95" x2="42" y2="140"/><line x1="60" y1="95" x2="78" y2="140"/>${arms}</g></svg>`;
+const PICS = {
+  armsUp:      FIG('<line x1="60" y1="55" x2="38" y2="10"/><line x1="60" y1="55" x2="82" y2="10"/>'),
+  armsOut:     FIG('<line x1="60" y1="55" x2="8" y2="55"/><line x1="60" y1="55" x2="112" y2="55"/>'),
+  handsOnHead: FIG('<polyline points="60,55 30,40 50,16"/><polyline points="60,55 90,40 70,16"/>'),
+  oneArm:      FIG('<line x1="60" y1="55" x2="84" y2="8"/><line x1="60" y1="55" x2="40" y2="92"/>'),
+  freeze:      FIG('<line x1="60" y1="55" x2="40" y2="92"/><line x1="60" y1="55" x2="80" y2="92"/>') + '<div style="font-size:34px;margin-top:-6px">🧊</div>',
+};
+function showPose(cmd){ $('pose').innerHTML = PICS[cmd] + `<div class="lbl">${UI.poses[cmd]}</div>`; $('pose').classList.add('on'); }
+function hidePose(){ $('pose').classList.remove('on'); }
+function timerBar(sec){ const b = $('timer'); b.style.transition = 'none'; b.style.width = '100%'; void b.offsetWidth; b.style.transition = `width ${sec}s linear`; b.style.width = '0'; }
+
+// ───────── audio: one voice (clips recorded through her Realtime voice), played in the page ─────────
+const AC = new (window.AudioContext || window.webkitAudioContext)();
+const CLIPS = {};
+async function preload(){
+  const ids = Object.keys(LINES).filter(k => !k.startsWith('_')), missing = [];
+  await Promise.all(ids.map(async id => { const files = MANIFEST[id] || []; if (!files.length){ missing.push(id); return; }
+    CLIPS[id] = await Promise.all(files.map(async f => AC.decodeAudioData(await (await fetch(`../audio/nsfast/${LKEY}/${f}`)).arrayBuffer()))); }));
+  if (missing.length) throw new Error('missing clips: ' + missing.join(', '));
+}
+function play(id, caption = true){
+  const takes = CLIPS[id]; if (!takes) return Promise.resolve();
+  const buf = takes[Math.floor(Math.random() * takes.length)];
+  if (caption) $('cap').textContent = LINES[id] || '';
+  return new Promise(res => { const s = AC.createBufferSource(); s.buffer = buf; s.connect(AC.destination); s.onended = () => { if (caption) $('cap').textContent = ''; res(); }; s.start(); });
+}
+function sfx(kind, combo = 0){ const m = { pop:[660 + Math.min(combo,12)*45,90,'sine'], twinkle:[1320,160,'sine'], boing:[240,260,'triangle'], ding:[1568,180,'sine'], whoosh:[400,180,'sine'], tick:[980,40,'square'] }[kind]; if (!m) return;
+  try { const o = AC.createOscillator(), g = AC.createGain(); o.type = m[2]; o.frequency.setValueAtTime(m[0], AC.currentTime);
+    if (kind === 'boing') o.frequency.exponentialRampToValueAtTime(110, AC.currentTime + .25);
+    if (kind === 'whoosh') o.frequency.exponentialRampToValueAtTime(1400, AC.currentTime + .18);
+    g.gain.value = kind === 'tick' ? .05 : .15; o.connect(g).connect(AC.destination); o.start(); g.gain.exponentialRampToValueAtTime(.0001, AC.currentTime + m[1]/1000); o.stop(AC.currentTime + m[1]/1000); } catch(e){} }
+function pop(text, color){ const p = $('pop'); p.textContent = text; p.style.color = color; p.classList.remove('show'); void p.offsetWidth; p.classList.add('show'); }
+function wobble(){ $('stage').classList.remove('wobble'); void $('stage').offsetWidth; $('stage').classList.add('wobble'); }
+
+// ───────── body + brain ─────────
+function setBody(id){ try { K.bridge?.setBody?.(id); } catch(e){} dbgNote('body ' + id); }
+// [ADAPT] map to the bridge the CLI built on novasays-v3: mic(bool), note({kind}) — 'show' must ALSO stop the 13s silence timer and drop transcripts in rt_lk
+/* [FIX 2026-09-30, same bug I found in Up Groove] K.setPhase routes the bridge voice by phase
+   (game-kit.js:47): any phase that is not intro/between/ending/hold calls routeVoice('air'), which puts
+   the gain back to 1. This file closed the gates and THEN called setPhase('game'), so setPhase silently
+   reopened the gate it had just shut and she could talk over a round. freeze2.html:167-173 documents the
+   order: muting → setPhase FIRST, then the gates; un-muting → gates first, then setPhase. */
+function brainOffstage(){ K.setPhase('game');
+  try { K.bridge?.mic?.(false); K.bridge?.note?.({ kind:'speak-gate', on:true }); K.bridge?.note?.({ kind:'show', on:true }); } catch(e){}
+  document.body.dataset.phase = 'game'; OPEN = null; moves.clear(); }
+function brainOnstage(phase){ try { K.bridge?.note?.({ kind:'show', on:false }); K.bridge?.note?.({ kind:'speak-gate', on:false }); K.bridge?.mic?.(true); } catch(e){}
+  K.setPhase(phase); document.body.dataset.phase = phase; OPEN = null; moves.clear(); }
+function remember(text){ try { K.bridge?.note?.({ kind:'remember', text }); } catch(e){} }
+function brainSpeak(text, startMs = 3000, maxMs = 14000){
+  return new Promise(res => { if (!K.bridge?.note || !K.bridge?.onHerAudio) return res(false);
+    let started = false, done = false; const fin = v => { if (!done){ done = true; res(v); } };
+    try { K.bridge.onHerAudio({ playing: () => { started = true; }, ended: () => { if (started) fin(true); } }); } catch(e){ return res(false); }
+    K.bridge.note({ kind:'section-end', speak:true, text });
+    setTimeout(() => { if (!started) fin(false); }, startMs); setTimeout(() => fin(started), maxMs); });
+}
+
+// ───────── camera loop → judges ─────────
+let last = null, win = null, paused = false, over = false;
+K.onKid = (out, k) => { if (!k) return; last = k; const t = now(); J.update(k, t);
+  lights.feed(k, t);                                                        // every frame, open action or not
+  if (OPEN && !paused) moves.live(OPEN, k, t);                              // only while an action is open
+  if (win && !paused){ const r = win.feed(k, t); if (r) resolveWin(r); } dbg(); };
+let winResolve = null;
+function openWin(kind, cmd, dur){ return new Promise(res => { win = new J.Window(kind, cmd, now(), dur); winResolve = res; timerBar(dur); dbgNote(`win ${kind} ${cmd} ${dur.toFixed(2)}s`); }); }
+function resolveWin(r){ if (!win) return; win = null; $('timer').style.width = '0'; const f = winResolve; winResolve = null; f?.(r); }
+setInterval(() => { if (win && !paused){ const r = win.timeout(now()); if (r) resolveWin(r); } }, 200);     // frames stopped → 'void', never free stars
+
+// ───────── pause, tab, presence ─────────
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function whilePaused(){ while (paused) await sleep(150); }
+function setPaused(v){ paused = v; if (v) AC.suspend(); else AC.resume(); }
+document.addEventListener('visibilitychange', () => setPaused(document.hidden));
+$('pause').onclick = () => setPaused(!paused);
+async function presence(){
+  if (last && J.sw(last)) return;
+  const g = $('gateArms'); g.classList.remove('hidden'); await play('fb.comeback');
+  await new Promise(res => { let ok = null; const t = setInterval(() => { if (last && J.sw(last)){ ok ??= now(); if (now() - ok > 0.8){ clearInterval(t); res(); } } else ok = null; }, 100); });
+  g.classList.add('hidden');
+}
+
+// ───────── score ─────────
+let stars = 0, combo = 0, bestCombo = 0, tricksHeld = 0, tricksTotal = 0, maxStars = 0, decisions = 0, roundLog = [];
+function addStars(n){ stars += n; $('stars').textContent = `⭐ ${stars}`; }
+function setCombo(){ $('combo').textContent = combo >= 2 ? `🔥x${combo}` : ''; }
+function setTricks(){ $('tricks').textContent = `🎯 ${tricksHeld}/${tricksTotal}`; }
+async function right(n, isTrick){
+  combo++; bestCombo = Math.max(bestCombo, combo); decisions++; addStars(n); setCombo();
+  if (isTrick){ sfx('twinkle'); pop(`${UI.held} +2⭐`, '#ffdf7e'); } else { sfx('pop', combo); pop('+1⭐', '#ffc23e'); }
+  if (combo % S.comboBonusEvery === 0){ addStars(1); pop(`${UI.combo} x${combo}! +1⭐`, '#ffb27d'); await play('fb.combo', false); }
+}
+
+// ───────── one command ─────────
+async function command(cmd, kind, dur, rs){
+  await whilePaused(); if (over) return 'void';
+  await presence();
+  showPose(cmd);                                                       // the picture shows on real AND trick — only the words differ
+  OPEN = moveFor(cmd, kind); if (OPEN) moves.cue(OPEN);                // the ghost of the pose lands ON him as she speaks
+  await play(kind === 'real' ? `cmd.${cmd}.real` : `cmd.${cmd}.bare`);
+  const effective = cmd === 'freeze' ? Math.max(dur, S.tune.freezeHoldS + 1.0) : dur;
+  const r = await openWin(kind, cmd, effective);
+  hidePose();
+  /* The judge above has already decided. The recipe is told what IT decided — never the other way round.
+     'hit' = a real command done · 'held' = a trick survived · 'gotcha' = moved on a trick · anything else = missed. */
+  if (OPEN){ const id = OPEN; OPEN = null;
+    if (r === 'void') moves.clear(id);
+    else { moves.result(id, (r === 'hit' || r === 'held') ? 'ok' : 'miss', null); setTimeout(() => moves.clear(id), 900); } }
+  if (r === 'void') return r;
+  if (kind === 'trick'){ tricksTotal++; setTricks(); }
+  if (r === 'hit'){ rs.hits++; await right(1, false); if (cmd === 'freeze') sfx('ding'); }
+  else if (r === 'held'){ tricksHeld++; rs.held++; setTricks(); await right(2, true); }
+  else if (r === 'gotcha'){ combo = 0; setCombo(); rs.gotcha++; decisions++; sfx('boing'); wobble(); pop(UI.gotcha, '#b98cff'); }   // [ADAPT] the kit's gotchaRipple is gone: says.trick's miss already writes GOTCHA! on him
+  else { combo = 0; setCombo(); decisions++; }                         // a missed real command: silence, the combo resets
+  remember(`${cmd} ${kind} → ${r} · stars ${stars} · combo ${combo}`);
+  return r;
+}
+
+// ───────── the game ─────────
+async function practice(){
+  brainOffstage(); setBody(S.talkBody);
+  await play('practice.still'); J.startSample('still'); await sleep(2000); J.stopSample();
+  await play('practice.watch');
+  setBody(S.practiceDemo.armsUp); setTimeout(() => setBody(S.talkBody), 1400);
+  showPose('armsUp'); J.startSample('reach'); await play('cmd.armsUp.real');
+  let r = await openWin('real', 'armsUp', S.practice.win);
+  if (r !== 'hit'){ await play('practice.retry'); r = await openWin('real', 'armsUp', S.practice.win); }
+  J.stopSample(); hidePose(); const cal = J.finishCalibration(); dbgNote('[CAL] ' + JSON.stringify(cal));
+  if (r === 'hit'){ sfx('pop'); await play('practice.yes'); }
+  await play('practice.listen'); showPose('armsOut'); await play('cmd.armsOut.bare');
+  const t = await openWin('trick', 'armsOut', S.practice.win); hidePose();
+  if (t === 'gotcha'){ sfx('boing'); wobble(); pop(UI.gotcha, '#b98cff'); await play('practice.caught'); }
+  else { sfx('twinkle'); await play('practice.held'); }
+  remember(`practice: arms-up ${r}, trick ${t}, calibration ${JSON.stringify(cal)}`);
+  await play('practice.go');
+}
+async function round(R, idx){
+  brainOffstage(); setBody(S.gameBody); K.hud.dots(idx + 1, S.rounds.length);
+  if (R.intro){ sfx('whoosh'); await play(R.intro); }
+  K.bed.start(112, 0.22);
+  const rs = { n:R.n, hits:0, held:0, gotcha:0, tricks:R.steps.filter(s => s[1] === 'trick').length, stars0:stars };
+  let dur = R.win;
+  for (const [cmd, kind, chain] of R.steps){
+    if (over) break;
+    const r = await command(cmd, kind, dur, rs);
+    if (r === 'hit' || r === 'held') dur = Math.max(R.minWin, dur * R.shrink);        // he's getting it → faster
+    await sleep(chain ? 0 : S.gapMs);
+  }
+  K.bed.stop(); rs.stars = stars - rs.stars0; roundLog.push(rs); return rs;
+}
+async function card(rs){
+  $('cardStars').textContent = `⭐ ${rs.stars}`; $('cardLine').textContent = `🎯 ${rs.held}/${rs.tricks} ${UI.tricks}`;
+  $('card').classList.remove('hidden'); sfx('ding'); await sleep(2200); $('card').classList.add('hidden');
+}
+function maxFor(){ let m = 0, d = 0; for (const r of S.rounds) for (const [c, k] of r.steps){ m += k === 'trick' ? 2 : 1; d++; } return m + Math.floor(d / S.comboBonusEvery); }
+async function ending(){
+  over = true; K.bed.stop(); await play('tr.done');
+  const pct = stars / Math.max(1, maxStars), medal = pct >= S.medals.goldFrom ? '🥇' : pct >= S.medals.silverFrom ? '🥈' : '🥉';
+  $('medal').textContent = medal; $('finalScore').textContent = `⭐ ${stars}`; $('finalLine').textContent = `🎯 ${tricksHeld}/${tricksTotal} · 🔥x${bestCombo}`;
+  $('scorecard').style.display = 'flex';
+  brainOnstage('ending'); setBody(S.talkBody);
+  const spoke = await brainSpeak(`The game is over. Real facts: ${stars} stars, medal ${medal}, survived ${tricksHeld} of ${tricksTotal} tricks, best combo ${bestCombo}. ` +
+    `Celebrate with the child by name using ONLY these facts, ask "Did you have fun?" and wait. After the answer, say goodbye by name.`);
+  if (!spoke) await play('fallback.end');
+  K.pulse({ game:'novasays-fast', stars, tricksHeld, tricksTotal, bestCombo, rounds:roundLog, seconds:Math.round(now() - T0) });
+}
+async function main(){
+  // LIVE intro: the brain greets (?intro=novasays), asks the name, explains, waits for a yes (consent event or ✓)
+  brainOnstage('intro'); setBody(S.talkBody);
+  await new Promise(res => { const b = document.createElement('button'); b.id = 'okBtn'; b.className = 'big'; b.textContent = '✓';
+    const go = () => { b.remove(); res(); }; b.onclick = go; document.body.appendChild(b); window.addEventListener('nova:consent', go, { once:true }); });
+  maxStars = maxFor();
+  await practice();
+  for (let i = 0; i < S.rounds.length && !over; i++){ const rs = await round(S.rounds[i], i); if (i < S.rounds.length - 1) await card(rs); }
+  await ending();
+}
+
+// ───────── debug + boot ─────────
+let DBGN = ''; function dbgNote(s){ DBGN = s; console.log('[NSF]', s); dbg(); }
+function dbg(){ const el = $('dbg'); if (!el || document.body.dataset.debug === '0') return;
+  el.textContent = `t ${(now()-T0).toFixed(1)}s | E ${J.st.energy.toFixed(3)} move>${J.st.thr.move.toFixed(2)} still<${J.st.thr.still.toFixed(2)} | win ${win ? win.kind+' '+win.cmd : '-'} | ⭐${stars} 🔥${combo} | ${DBGN}`; }
+$('exit').onclick = () => location.href = '/';
+$('again').onclick = () => location.reload();
+K.boot(async () => {
+  try { await AC.resume(); await preload(); } catch(e){ return K.banner('Nova Says cannot start: ' + e.message); }
+  if (!(window.LivekitClient || window.LiveKitClient)) return K.banner('LiveKit client missing — her video cannot attach');
+  if (K.bridge?.attachNova){ try { await K.bridge.attachNova({ onVideo: v => { $('novaMain').srcObject = v; $('novaAmbient').srcObject = v; } }); } catch(e){ return K.banner('Nova is not connected: ' + e.message); } }
+  else return K.banner('Nova bridge missing (/shared/nova-bridge.js)');
+  K.start(); main().catch(e => K.banner('Game error: ' + e.message));
+});
+</script></body></html>

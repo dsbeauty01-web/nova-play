@@ -1,0 +1,45 @@
+{
+ "_note": "Hebrew lines for a BOY (?g=m). Same ids as lines-en.json. Kid Hebrew, same length or shorter. The COMMANDS are deliberately genderless — that is how you shout an order in a children's game (ידיים למעלה!, כפיים!) and it keeps the real and bare takes identical in length. Gender appears where Hebrew forces it: imperatives (בוא/תחזור) and 2nd-person past, where אתה/את is kept in front so the TTS pronounces הקשבת as hikshavta and not hikshavt — without the pronoun the two genders are spelled identically and the voice guesses.",
+
+ "cmd.armsUp.real": "נובה אומרת… ידיים למעלה!",
+ "cmd.armsUp.bare": "ידיים למעלה!",
+ "cmd.leftArm.real": "נובה אומרת… יד שמאל למעלה!",
+ "cmd.leftArm.bare": "יד שמאל למעלה!",
+ "cmd.rightArm.real": "נובה אומרת… יד ימין למעלה!",
+ "cmd.rightArm.bare": "יד ימין למעלה!",
+ "cmd.clap.real": "נובה אומרת… כפיים!",
+ "cmd.clap.bare": "כפיים!",
+ "cmd.freeze.real": "נובה אומרת… לקפוא כמו פסל!",
+
+ "practice.intro": "בוא נתאמן!",
+ "practice.yes": "כן! בדיוק ככה!",
+ "practice.retry": "ידיים למעלה — כמוני!",
+ "practice.listen": "עכשיו תקשיב…",
+ "practice.caught": "חיחי! לא אמרתי נובה אומרת! זה התרגיל!",
+ "practice.held": "ואו, אתה הקשבת! תפסת אותי!",
+
+ "fb.yes": "יש!",
+ "fb.nice": "יפה!",
+ "fb.held": "אתה לא זזת!",
+ "fb.listened": "אתה הקשבת!",
+ "fb.gotcha": "תפסתי אותך! חיחי!",
+ "fb.gotcha2": "חיחי — לא אמרתי נובה אומרת!",
+ "fb.super": "אלוף הקשבה!",
+ "fb.statue": "פסל!",
+ "fb.tried": "אתה ניסית! יפה!",
+ "fb.together": "בוא נעשה ביחד!",
+ "fb.freezeBody": "תקפיא את הגוף — זזים רק כשאני אומרת נובה אומרת!",
+ "fb.comeback": "לאן הלכת? תחזור!",
+ "fb.welcome": "הנה אתה!",
+
+ "tr.round1": "סיבוב ראשון!",
+ "tr.round2": "סיבוב שני — מהר יותר!",
+ "tr.round3": "סיבוב הברק!",
+ "tr.last": "האחרון…",
+
+ "fallback.card1": "מדהים! סיבוב שני!",
+ "fallback.card2": "איזה יופי! סיבוב הברק!",
+ "fallback.end": "איזה שחקן! נשחק שוב מחר!",
+ "practice.still": "קודם — תעמוד בלי לזוז, כמו פסל!",
+ "fallback.reconnect": "אופס — בוא נסיים ביחד! היית מדהים!"
+}

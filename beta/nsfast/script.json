@@ -1,0 +1,226 @@
+{
+ "version": "fast-1",
+ "talkBody": "nova_idle2",
+ "gameBody": "nova_idlegroove_v2",
+ "practiceDemo": {
+  "armsUp": "gest_star"
+ },
+ "tune": {
+  "_note": "Energy = displacement per SECOND in shoulder-widths (fps-independent). Floors from the QA bench: a real 1s arm raise \u2248 1.55; a measured still child \u2248 0.24. The CLI replaces these with harness numbers and logs old\u2192new.",
+  "visMin": 0.4,
+  "teleport": 0.8,
+  "stillDefault": 0.25,
+  "moveFloor": 0.9,
+  "moveK": 4.0,
+  "stillFloor": 0.4,
+  "stillK": 1.8,
+  "reachDefault": 0.25,
+  "reachFloor": 0.15,
+  "reachFrac": 0.4,
+  "lastUpHoldS": 0.6,
+  "outX": 0.9,
+  "outY": 0.7,
+  "headUp": 0.3,
+  "headX": 1.1,
+  "headClose": 1.8,
+  "hitHoldS": 0.15,
+  "freezeHoldS": 0.8,
+  "trickIgnoreS": 0.25,
+  "gotchaPoseS": 0.15,
+  "gotchaMoveK": 1.4,
+  "gotchaMoveS": 0.35,
+  "lostVoidS": 2.0,
+  "stallS": 0.5,
+  "upHead": 0.95,
+  "upFrac": 0.75,
+  "elbowFrac": 0.4
+ },
+ "comboBonusEvery": 5,
+ "gapMs": 180,
+ "practice": {
+  "win": 3.0
+ },
+ "rounds": [
+  {
+   "n": 1,
+   "intro": null,
+   "win": 2.0,
+   "minWin": 1.6,
+   "shrink": 0.97,
+   "steps": [
+    [
+     "armsUp",
+     "real"
+    ],
+    [
+     "armsOut",
+     "real"
+    ],
+    [
+     "handsOnHead",
+     "real"
+    ],
+    [
+     "oneArm",
+     "trick"
+    ],
+    [
+     "oneArm",
+     "real"
+    ],
+    [
+     "armsUp",
+     "real"
+    ],
+    [
+     "armsOut",
+     "real"
+    ],
+    [
+     "handsOnHead",
+     "trick",
+     true
+    ],
+    [
+     "freeze",
+     "real"
+    ],
+    [
+     "armsUp",
+     "trick"
+    ]
+   ]
+  },
+  {
+   "n": 2,
+   "intro": "tr.round2",
+   "win": 1.7,
+   "minWin": 1.3,
+   "shrink": 0.97,
+   "steps": [
+    [
+     "handsOnHead",
+     "real"
+    ],
+    [
+     "armsUp",
+     "real"
+    ],
+    [
+     "armsOut",
+     "trick"
+    ],
+    [
+     "oneArm",
+     "real"
+    ],
+    [
+     "armsOut",
+     "real"
+    ],
+    [
+     "armsUp",
+     "trick",
+     true
+    ],
+    [
+     "handsOnHead",
+     "real"
+    ],
+    [
+     "freeze",
+     "real"
+    ],
+    [
+     "oneArm",
+     "trick"
+    ],
+    [
+     "armsUp",
+     "real"
+    ],
+    [
+     "handsOnHead",
+     "real"
+    ],
+    [
+     "armsOut",
+     "trick",
+     true
+    ]
+   ]
+  },
+  {
+   "n": 3,
+   "intro": "tr.round3",
+   "win": 1.4,
+   "minWin": 1.0,
+   "shrink": 0.96,
+   "steps": [
+    [
+     "armsUp",
+     "real"
+    ],
+    [
+     "armsOut",
+     "real"
+    ],
+    [
+     "handsOnHead",
+     "trick"
+    ],
+    [
+     "oneArm",
+     "real"
+    ],
+    [
+     "armsUp",
+     "real"
+    ],
+    [
+     "armsOut",
+     "trick",
+     true
+    ],
+    [
+     "handsOnHead",
+     "real"
+    ],
+    [
+     "armsUp",
+     "trick"
+    ],
+    [
+     "oneArm",
+     "real"
+    ],
+    [
+     "armsOut",
+     "real"
+    ],
+    [
+     "oneArm",
+     "trick",
+     true
+    ],
+    [
+     "handsOnHead",
+     "real"
+    ],
+    [
+     "armsUp",
+     "trick"
+    ],
+    [
+     "freeze",
+     "real"
+    ]
+   ]
+  }
+ ],
+ "_steps": "[command, 'real'|'trick', chain?] \u2014 chain=true: follows the previous command with NO gap (the classic trap: 'Nova says arms up\u2026 ARMS OUT!')",
+ "medals": {
+  "silverFrom": 0.5,
+  "goldFrom": 0.8
+ }
+}

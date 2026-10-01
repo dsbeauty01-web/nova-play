@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nova · Up Groove</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<!-- [ADAPT 2026-09-30] The pack asked for "the EXACT tag the live animal-freeze page uses" and then
+     shipped `livekit-client.umd.js` — a path that CDN does NOT serve (`.umd.min.js` does). beta/freeze2.html
+     carries the same note: a page that loads no LiveKit client is the bug that killed every Nova Says play
+     on 2026-09-26. Corrected to the tag animal-freeze.html:12 and freeze2.html actually use. -->
+<script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
+<style>
+:root{--gold:#ffc23e;--ink:#2a2140;--stage:#1f1338}
+html,body{margin:0;height:100%;background:var(--stage);font-family:Nunito,system-ui;color:#fff;overflow:hidden}
+#stage{position:fixed;inset:0;display:flex}
+#novaWrap,#camWrap{position:relative;height:100vh;overflow:hidden;transition:width .45s ease}
+#novaWrap{width:50vw;background:#2b1b4a}#camWrap{width:50vw;background:#120a22}
+body[data-phase=intro] #novaWrap,body[data-phase=between] #novaWrap,body[data-phase=ending] #novaWrap{width:64vw}
+body[data-phase=intro] #camWrap,body[data-phase=between] #camWrap,body[data-phase=ending] #camWrap{width:36vw}
+#novaMain{position:absolute;left:50%;top:0;height:100vh;width:auto;transform:translateX(-50%);z-index:2}
+#novaAmbient{position:absolute;left:50%;top:50%;height:130vh;transform:translate(-50%,-50%) scaleX(2.4);filter:blur(30px);opacity:.85;z-index:1}
+#usercam{width:100%;height:100%;object-fit:cover;transform:scaleX(-1);filter:brightness(.8) saturate(.9)}
+#fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6}
+#hud{position:fixed;top:1.6vh;left:0;right:0;display:flex;gap:16px;justify-content:center;align-items:center;z-index:50;pointer-events:none}
+.pill{background:rgba(0,0,0,.4);border-radius:999px;padding:6px 16px;font-weight:800}
+#pts{font:800 38px 'Baloo 2';color:var(--gold)}#streak{font:800 28px 'Baloo 2';color:#ffb27d;min-width:80px;text-align:center}
+#score,#tag,#dots{display:none}
+#cap{position:fixed;left:0;right:0;bottom:4vh;text-align:center;z-index:50;font:800 clamp(22px,3.2vw,38px) 'Baloo 2';text-shadow:0 2px 16px rgba(0,0,0,.7)}
+#dbg,#dbgGame{position:fixed;left:8px;z-index:99;font:600 12px monospace;background:rgba(0,0,0,.65);color:#9f9;padding:6px 10px;border-radius:8px;white-space:pre}
+#dbg{bottom:18px}#dbgGame{bottom:44px;color:#ffd65a}
+body[data-debug="0"] #dbg,body[data-debug="0"] #dbgGame{display:none}
+#gate,#banner,#gateArms,#card,#scorecard{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(31,19,56,.9);z-index:90;text-align:center;padding:24px}
+#gateArms{background:rgba(31,19,56,.5)}#banner{background:#3a0d0d;color:#ffb3b3;font-weight:800;font-size:22px}
+#card{background:rgba(31,19,56,.35);pointer-events:none}
+button.big{font:800 30px 'Baloo 2';padding:16px 46px;border:0;border-radius:18px;background:var(--gold);color:var(--ink);cursor:pointer;margin-top:18px}
+#ring{width:110px;height:110px;border-radius:50%;border:6px solid rgba(255,255,255,.25);border-top-color:var(--gold);margin-top:18px}
+#gateMsg{font:800 30px 'Baloo 2'}
+#card h2,#scorecard h1{font:800 64px 'Baloo 2';margin:0;color:var(--gold)}#card p,#scorecard p{font-size:24px;margin:8px 0}
+#medal{font-size:120px;line-height:1}#scorecard{display:none}
+#okBtn{position:fixed;right:24px;bottom:24px;z-index:95}
+#pause,#exit{position:fixed;top:1.6vh;z-index:60;background:rgba(0,0,0,.45);color:#fff;border:0;border-radius:12px;padding:8px 12px;font-size:18px;cursor:pointer}#pause{right:64px}#exit{right:14px}
+.hidden{display:none!important}
+</style></head><body data-phase="intro" data-debug="1">
+<div id="stage">
+  <div id="novaWrap"><video id="novaAmbient" autoplay muted playsinline></video><video id="novaMain" autoplay muted playsinline></video></div>
+  <div id="camWrap"><video id="usercam" autoplay muted playsinline></video><canvas id="fx"></canvas></div>
+</div>
+<div id="hud"><div id="dots"></div><div class="pill"><span id="pts">0</span></div><div id="streak"></div><div id="score"></div><div id="tag"></div></div>
+<div id="cap"></div><div id="dbg"></div><div id="dbgGame"></div>
+<button id="pause">⏸</button><button id="exit">✕</button>
+<div id="gate"><div style="font:800 48px 'Baloo 2'">🎵 Up Groove</div><div id="gateSub" style="opacity:.85;margin-top:6px;max-width:560px;font-size:20px"></div><button id="start" class="big">▶</button></div>
+<div id="gateArms" class="hidden"><div id="gateMsg"></div><div id="ring"></div></div>
+<div id="card" class="hidden"><h2 id="cardPts"></h2><p id="cardLine"></p></div>
+<div id="scorecard"><div id="medal"></div><h1 id="finalScore">0</h1><p id="finalLine"></p><button id="again" class="big">↻</button></div>
+<div id="banner" class="hidden"></div>
+<script type="module">
+/* UP GROOVE — bounce on the big beat.
+   REFEREE: BounceDetector (tested) finds the bottom of each bounce; scoreHit compares it with the beat.
+   REACTOR: an approach ring on the chest closes exactly on the beat; on-beat = gold burst + floor ripple + "+100";
+            close = cyan ripple; recorded praise every few hits. Nothing live during rounds.
+   TALKER: the Stage (shared/stage.js) — intro, 2 breathers, ending, with recorded fallbacks. All timing on the audio clock. */
+import { createKit } from '../shared/game-kit.js';
+import { Stage } from '../shared/stage.js';
+import { BounceDetector, scoreHit } from '../shared/motion-detect.js';
+import { createLights } from '../shared/nova-lights.js';
+import { createMoves } from '../shared/move-recipes.js';
+const $ = id => document.getElementById(id);
+const Q = new URLSearchParams(location.search);
+const LANG = (Q.get('lang') || localStorage.getItem('nova-lang') || 'en') === 'he' ? 'he' : 'en';
+const G = (Q.get('g') || localStorage.getItem('nova-gender') || 'm') === 'f' ? 'f' : 'm';
+const LKEY = LANG === 'he' ? `he-${G}` : 'en';
+if (Q.get('debug') === '0') document.body.dataset.debug = '0';
+if (LANG === 'he') for (const id of ['cap','card','scorecard','gateArms','gate']) $(id).dir = 'rtl';
+const UI = LANG === 'he' ? { sub:'קופצים על הביט הגדול!', gate:'תתרחק קצת — שאראה אותך', on:'על הביט' } : { sub:'Bounce on the big beat!', gate:'Step back — let me see you', on:'on the beat' };
+$('gateSub').textContent = UI.sub; $('gateMsg').textContent = UI.gate;
+
+const S = await (await fetch('../beta/upgroove/script.json')).json();
+const LINES = await (await fetch(`../beta/upgroove/lines-${LKEY}.json`)).json();
+let MANIFEST = {}; try { MANIFEST = await (await fetch(`../audio/upgroove/${LKEY}/manifest.json`)).json(); } catch(e){}
+const K = await createKit({ tier:'kids', mirror:true, game:'upgroove', lang:LANG, refCandidates:[] });
+const now = () => performance.now() / 1000;
+const T0 = now();
+const lights = createLights($('fx'), { video: $('usercam'), mirror: S.lights.mirror, debug: Q.get('dots') === '1' });   // ?dots=1 → white dots must sit ON the child's joints; if on the wrong side, flip lights.mirror in script.json
+/* [MIGRATED to nova-moves-v4] the ring and the hit used to be direct lights calls; they are the
+   groove.bounce recipe now, so every game speaks to the light layer the same way. The referee is
+   untouched — BounceDetector + scoreHit still grade every bounce and the recipe is only told the grade. */
+const moves = createMoves(lights, { mirror: S.lights.mirror });
+const bounce = new BounceDetector(S.bounce);
+
+// ───────── audio: song + recorded lines on one clock ─────────
+const AC = new (window.AudioContext || window.webkitAudioContext)();
+const gMel = AC.createGain(); gMel.gain.value = 0; gMel.connect(AC.destination);
+let SONG = null, songSrc = null; const CLIPS = {};
+async function loadBuf(url){ const r = await fetch(url); if (!r.ok) throw new Error('missing ' + url); return AC.decodeAudioData(await r.arrayBuffer()); }
+async function preload(){
+  SONG = await loadBuf(S.music.song);
+  const ids = Object.keys(LINES).filter(k => !k.startsWith('_')), missing = [];
+  await Promise.all(ids.map(async id => { const files = MANIFEST[id] || []; if (!files.length){ missing.push(id); return; } CLIPS[id] = await Promise.all(files.map(f => loadBuf(`../audio/upgroove/${LKEY}/${f}`))); }));
+  if (missing.length) throw new Error('missing clips: ' + missing.join(', '));
+}
+function play(id, caption = true){ const t = CLIPS[id]; if (!t) return Promise.resolve(); const buf = t[Math.floor(Math.random() * t.length)];
+  const s = AC.createBufferSource(); s.buffer = buf; s.connect(AC.destination); s.start(); if (caption) $('cap').textContent = LINES[id] || '';
+  return new Promise(res => { s.onended = () => { if ($('cap').textContent === (LINES[id] || '')) $('cap').textContent = ''; res(); }; }); }
+function startSong(songPos, at){ stopSong(); songSrc = AC.createBufferSource(); songSrc.buffer = SONG; songSrc.connect(gMel); gMel.gain.setValueAtTime(S.music.vol, at); songSrc.start(at, songPos); }
+function stopSong(at = AC.currentTime){ try { gMel.gain.cancelScheduledValues(at); gMel.gain.setTargetAtTime(0, at, 0.15); songSrc?.stop(at + 0.6); } catch(e){} songSrc = null; }
+const acToPerf = ac => ac - AC.currentTime + now();                        // audio clock → performance clock
+const outLat = () => (AC.outputLatency || AC.baseLatency || 0);             // the child HEARS the beat this much later
+
+// ───────── the stage (the only way she speaks live) ─────────
+const stage = new Stage({
+  now: () => performance.now(),
+  remember: text => { try { K.bridge?.note?.({ kind:'remember', text }); } catch(e){} },
+  speakNow: text => { try { K.bridge?.note?.({ kind:'section-end', speak:true, text }); } catch(e){} },   // [ADAPT] same verbs as Freeze v2 on the stage
+  playClip: id => play(id),
+  setBody: id => { try { K.bridge?.setBody?.(id); } catch(e){} },
+  log: s => dbgNote(s),
+  cfg: { restBody: S.talkBody },                                             // [ADAPT] same as freeze2; Stage's own default is nova_idle2
+});
+setInterval(() => stage.tick(), 100);
+try { K.bridge?.onHerAudio?.({ playing: () => stage.setNovaSpeaking(true), ended: () => stage.setNovaSpeaking(false) }); } catch(e){}
+try { K.bridge?.onSpeech?.({ started: () => stage.setKidSpeaking(true), stopped: () => stage.setKidSpeaking(false) }); } catch(e){}   // [ADAPT] rt_lk VAD relay (Stage pack §3)
+/* [ADAPT 2026-09-30] ORDER IS LOAD-BEARING, and the pack had it backwards going offstage.
+   K.setPhase(p) routes the bridge voice by phase (game-kit.js:47): any phase that is not
+   intro/between/ending/hold calls routeVoice('air'), which puts the voice gain back to 1. The pack
+   closed the gates first and called setPhase('game') last, so setPhase silently re-opened the gate it
+   had just shut and she could talk over a round. freeze2.html:167-173 documents the rule and does it
+   the other way: muting → setPhase FIRST then the gates; un-muting → gates first, then setPhase.
+   Also added the `speak-gate` note both ways; the pack sent only `show`, and freeze2 sends both. */
+function offstage(rn){ K.setPhase('game');
+  try { K.bridge?.mic?.(false); K.bridge?.note?.({ kind:'speak-gate', on:true }); K.bridge?.note?.({ kind:'show', on:true }); } catch(e){}
+  document.body.dataset.phase = 'game'; stage.phase(`round${rn ?? ''}`, { live:false }); }
+function onstage(p){ try { K.bridge?.note?.({ kind:'show', on:false }); K.bridge?.note?.({ kind:'speak-gate', on:false }); K.bridge?.mic?.(true); } catch(e){}
+  K.setPhase(p); document.body.dataset.phase = p; stage.phase(p, { live:true }); }
+
+// ───────── the REFEREE: every frame → bounce detector → graded against the beat ─────────
+let round = null, last = null, paused = false;
+K.onKid = (out, k) => { if (!k) return; last = k; const t = now(); lights.feed(k, t);
+  const hit = bounce.update(k, t);
+  if (hit && round && !paused){ const g = scoreHit(hit.t, round.firstPerf, round.period, { latencyS: S.latencyS, onS: S.onS, nearS: S.nearS });
+    if (g.beat >= 0 && g.beat < round.n) onHit(g, hit); }
+  dbg(); };
+
+// ───────── score + reactions ─────────
+let pts = 0, streak = 0, bestStreak = 0, onN = 0, nearN = 0, total = 0, sinceLine = 0; const roundLog = [];
+function addPts(n){ pts += n; $('pts').textContent = pts; }
+/* UPGROOVE.md §6 calibration: every graded bounce's distance from its beat, so the mean is readable
+   without a console. A positive mean = the pipeline reports bounces LATE ⇒ raise latencyS by that much. */
+const OFF = [];
+const offStat = () => OFF.length ? `offMs mean ${Math.round(OFF.reduce((a,b)=>a+b,0)/OFF.length)} (n=${OFF.length})` : 'offMs —';
+function onHit(g, hit){
+  if (round.graded.has(g.beat)) return; round.graded.add(g.beat);                        // one grade per beat
+  OFF.push(g.offMs); round.off.push(g.offMs);
+  moves.result('groove.bounce', g.grade === 'on' ? 'ok' : g.grade === 'near' ? 'near' : 'miss', g);
+  if (g.grade === 'on'){ onN++; round.on++; streak++; bestStreak = Math.max(bestStreak, streak); addPts(S.points.on * (streak >= S.points.streakFrom ? S.points.streakMult : 1)); sinceLine++;
+    if (streak === S.praise.streakAt) play('fb.streak'); else if (sinceLine >= S.praise.every){ sinceLine = 0; play(Math.random() < .5 ? 'fb.yes' : 'fb.groovy'); } }
+  else if (g.grade === 'near'){ nearN++; round.near++; streak = 0; addPts(S.points.near); }
+  else { streak = 0; }
+  $('streak').textContent = streak >= 2 ? `🔥x${streak}` : '';
+  stage.event('bounce', { beat: g.beat, grade: g.grade, offMs: g.offMs }, { key: 'bounce', conf: g.grade === 'on' ? 0.9 : 0.6 });
+  dbgNote(`beat ${g.beat} ${g.grade} ${g.offMs}ms dip ${hit.dip}`);
+}
+
+// ───────── one round on the audio clock ─────────
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function whilePaused(){ while (paused) await sleep(150); }
+function setPaused(v){ paused = v; if (v){ AC.suspend(); } else AC.resume(); }
+document.addEventListener('visibilitychange', () => setPaused(document.hidden));
+$('pause').onclick = () => setPaused(!paused);
+async function presence(){ if (last && last.lShoulder?.vis > .35 && last.rShoulder?.vis > .35) return;   // hips optional: the bounce falls back to the shoulders
+  const g = $('gateArms'); g.classList.remove('hidden');
+  await new Promise(res => { let ok = null; const t = setInterval(() => { const v = last && last.lShoulder?.vis > .35 && last.rShoulder?.vis > .35; if (v){ ok ??= now(); if (now() - ok > 0.8){ clearInterval(t); res(); } } else ok = null; }, 100); });
+  g.classList.add('hidden'); }
+
+async function playRound(R, idx){
+  await whilePaused(); await presence();
+  offstage(R.n); try { K.bridge?.setBody?.(S.gameBody); } catch(e){}
+  if (R.intro) await play(R.intro);
+  const beat = 60 / S.music.bpm, off = S.music.beatOffsetS;
+  /* [ADAPT 2026-09-30] start ON a beat, but never before the file starts — freeze2.html:243-247 hit
+     this: with a real beatOffsetS the snap can land negative and start(when, negativeOffset) throws
+     RangeError, killing the first round. Same guard here. */
+  let songPos = off + Math.round((R.songStartS - off) / beat) * beat;
+  while (songPos < 0) songPos += beat;
+  const t0 = AC.currentTime + 0.25; startSong(songPos, t0);
+  const period = beat * S.everyBeats, lead = (R.watchBeats || 0) * beat + period;     // first target after the watch beats
+  const firstAC = t0 + lead;
+  round = { n: R.bounces, period, firstAC, get firstPerf(){ return acToPerf(this.firstAC) + outLat(); }, graded: new Set(), on: 0, near: 0, off: [], R: R.n };   // recomputed each use → survives pause
+  moves.cue('groove.bounce', { nextBeatAt: t => { const k = Math.ceil((t - round.firstPerf - 0.05) / period); if (k >= round.n) return null; return round.firstPerf + Math.max(0, k) * period; },
+                               lead: S.lights.ringLeadS });
+  if (R.watchBeats){ play('intro.watch'); setTimeout(() => play('go.join'), Math.max(0, (lead - 1.4)) * 1000); }
+  while (AC.currentTime < firstAC + R.bounces * period + 0.4) await sleep(50);
+  moves.clear('groove.bounce'); total += R.bounces;
+  const rs = { n: R.n, on: round.on, near: round.near, of: R.bounces, off: round.off.slice() }; roundLog.push(rs);
+  dbgNote(`round ${R.n} offMs [${rs.off.join(', ')}]`);                                 // §6: paste these lists
+  round = null;
+  await sleep(1200); stopSong();
+  return rs;
+}
+
+async function breather(rs, idx){
+  onstage('between'); try { K.bridge?.setBody?.(S.talkBody); } catch(e){}
+  $('cardPts').textContent = `🎵 ${rs.on}/${rs.of}`; $('cardLine').textContent = UI.on; $('card').classList.remove('hidden');
+  const r = await stage.requestSpeak(`Round ${rs.n} of Up Groove just ended. Real facts: ${rs.on} of ${rs.of} bounces on the beat, ${rs.near} close. Say ONE excited line to the child by name (max 10 words), then stop. Never negative.`, { fallbackClip: idx === 0 ? 'fallback.card1' : 'fallback.card2' });
+  await herTurnEnds(r);                                                      // never start the music over her voice
+  await sleep(1200); $('card').classList.add('hidden');
+}
+async function herTurnEnds(r, maxMs = 12000){                              // 'spoken' = she STARTED; wait until she's done (or the backup clip)
+  const until = performance.now() + maxMs; await sleep(600);
+  while (performance.now() < until && (stage.novaSpeaking || !stage.quiet)) await sleep(150);
+  if (r !== 'spoken') await sleep(2200);                                     // the recorded fallback clip is ~2s
+}
+async function ending(){
+  onstage('ending'); try { K.bridge?.setBody?.(S.talkBody); } catch(e){}
+  const pct = onN / Math.max(1, total), medal = pct >= S.medals.goldFrom ? '🥇' : pct >= S.medals.silverFrom ? '🥈' : '🥉';
+  $('medal').textContent = medal; $('finalScore').textContent = pts; $('finalLine').textContent = `🎵 ${onN}/${total} ${UI.on} · 🔥x${bestStreak}`; $('scorecard').style.display = 'flex';
+  await stage.requestSpeak(`Up Groove is over. Real facts: ${pts} points, medal ${medal}, ${onN} of ${total} bounces on the beat, best streak ${bestStreak}. Celebrate with the child by name using ONLY these facts, ask "Did you have fun?" and wait.`, { fallbackClip: 'fallback.end', maxWaitMs: 4000 });
+  K.pulse({ game:'upgroove', pts, onN, nearN, total, bestStreak, rounds: roundLog, seconds: Math.round(now() - T0) });
+}
+
+async function main(){
+  onstage('intro'); try { K.bridge?.setBody?.(S.talkBody); } catch(e){}
+  await new Promise(res => { const b = document.createElement('button'); b.id = 'okBtn'; b.className = 'big'; b.textContent = '✓'; const go = () => { b.remove(); res(); }; b.onclick = go; document.body.appendChild(b); window.addEventListener('nova:consent', go, { once:true }); });
+  for (let i = 0; i < S.rounds.length; i++){ const rs = await playRound(S.rounds[i], i); if (i < S.rounds.length - 1) await breather(rs, i); }
+  await ending();
+}
+
+// ───────── debug + boot ─────────
+let DBGN = ''; function dbgNote(s){ DBGN = s; console.log('[UPGROOVE]', s); }
+/* [ADAPT 2026-09-30] the page's strip moved to its OWN element. The kit writes the same #dbg every frame
+   from its own loop (game-kit.js K.dbg), so the pack's line — the one UPGROOVE.md §6 tells the founder to
+   read offMs from — was overwritten before he could ever see it. §6 also asks for the MEAN, so the strip
+   now carries it: open ?dots=1, bounce one round on the beat, read `offMs mean`, add it (in seconds) to
+   latencyS in script.json. */
+function dbg(){ const el = $('dbgGame'); if (!el || document.body.dataset.debug === '0') return;
+  el.textContent = `t ${(now()-T0).toFixed(1)}s | AC ${AC.currentTime.toFixed(2)} outLat ${(outLat()*1000|0)}ms | pts ${pts} 🔥${streak} on ${onN} near ${nearN}/${total} | ${offStat()} | ${DBGN}`; }
+$('exit').onclick = () => location.href = '/';
+$('again').onclick = () => location.reload();
+/* [ADAPT 2026-09-30] K.boot replaced by the explicit sequence freeze2.html:395-409 uses. K.boot runs the
+   KIT's presenceGate, whose requestAnimationFrame-inside-async loop hung for ever on two pods — which is
+   why the certified page stopped calling K.boot. This page has its own presence() gate (it reads `last`
+   from onKid and only needs the shoulders), so the kit's gate was redundant as well as risky. */
+$('start').onclick = async () => {
+  $('gate')?.classList.add('hidden');
+  if (!(await K.startCamera())) return;                                                    // banners on its own
+  try { await K.initPose(); } catch(e){ return K.banner('Pose engine (MoveNet) failed: ' + e.message); }
+  try { await AC.resume(); await preload(); } catch(e){ return K.banner('Up Groove cannot start: ' + e.message); }
+  if (K.bridge?.attachNova){ K.bridge.attachNova({ onVideo: v => { $('novaMain').srcObject = v; $('novaAmbient').srcObject = v; } }).catch(e => dbgNote('her video not attached: ' + e.message)); }   // the game never waits for her face
+  K.start(); main().catch(e => K.banner('Game error: ' + e.message));
+};
+</script></body></html>

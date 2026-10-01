@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nova · Freeze</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<!-- [ADAPT 2026-09-27 · #1] EXACT tag from animal-freeze.html:12 — the pack shipped
+     `livekit-client.umd.js`, which that CDN path does NOT serve (`.umd.min.js` does). A page
+     that loads no LiveKit client is the bug that killed every Nova Says play on 2026-09-26:
+     srcObject stays null forever, so her video never attaches. -->
+<script src="https://cdn.jsdelivr.net/npm/livekit-client@2/dist/livekit-client.umd.min.js"></script>
+<style>
+:root{--gold:#ffc23e;--gold-hot:#ffdf7e;--ink:#2a2140;--stage:#1f1338;--ice:#aee8ff}
+html,body{margin:0;height:100%;background:var(--stage);font-family:Nunito,system-ui;color:#fff;overflow:hidden}
+#stage{position:fixed;inset:0;display:flex}
+#novaWrap,#camWrap{position:relative;height:100vh;overflow:hidden;transition:width .45s ease}
+#novaWrap{width:58vw;background:#2b1b4a}#camWrap{width:42vw;background:#120a22}
+body[data-phase=intro] #novaWrap,body[data-phase=between] #novaWrap,body[data-phase=ending] #novaWrap{width:64vw}
+body[data-phase=intro] #camWrap,body[data-phase=between] #camWrap,body[data-phase=ending] #camWrap{width:36vw}
+#novaMain{position:absolute;left:50%;top:0;height:100vh;width:auto;transform:translateX(-50%);z-index:2}
+#novaAmbient{position:absolute;left:50%;top:50%;height:130vh;transform:translate(-50%,-50%) scaleX(2.4);filter:blur(30px);opacity:.85;z-index:1}
+#usercam{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+#fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6}
+/* the freeze: an ice veil over BOTH panels, instantly on, melts off */
+.ice{position:absolute;inset:0;z-index:7;pointer-events:none;opacity:0;background:radial-gradient(ellipse at center,rgba(174,232,255,.10),rgba(174,232,255,.42));box-shadow:inset 0 0 90px rgba(174,232,255,.8);transition:opacity .5s}
+body.frozen .ice{opacity:1;transition:none}
+#animal{position:fixed;left:50%;top:14vh;transform:translateX(-50%) scale(.5);opacity:0;z-index:60;text-align:center;transition:transform .12s,opacity .12s}
+#animal.on{opacity:1;transform:translateX(-50%) scale(1)}
+#animal .e{font-size:clamp(70px,11vw,140px);line-height:1;filter:drop-shadow(0 6px 18px rgba(0,0,0,.4))}
+#animal .l{font:800 clamp(22px,3vw,40px) 'Baloo 2';color:var(--ice);text-shadow:0 2px 12px rgba(0,0,0,.6)}
+#holdbar{position:fixed;left:0;bottom:0;height:12px;width:0;background:linear-gradient(90deg,#aee8ff,#e8f8ff);z-index:61}
+#hud{position:fixed;top:1.6vh;left:0;right:0;display:flex;gap:16px;justify-content:center;align-items:center;z-index:50;pointer-events:none}
+.pill{background:rgba(0,0,0,.4);border-radius:999px;padding:6px 16px;font-weight:800}
+#pts{font:800 38px 'Baloo 2';color:var(--gold)}#streak{font:800 28px 'Baloo 2';color:#ffb27d;min-width:80px;text-align:center}
+#dots i{display:inline-block;width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,.22);margin:0 3px}#dots i.on{background:var(--gold)}
+#score,#tag{display:none}
+#pop{position:fixed;left:0;right:0;top:40vh;text-align:center;z-index:70;pointer-events:none;font:800 clamp(40px,8vw,110px) 'Baloo 2';opacity:0}
+#pop.show{animation:popin .8s ease-out forwards}@keyframes popin{0%{opacity:0;transform:scale(.4)}20%{opacity:1;transform:scale(1.12)}35%{transform:scale(1)}100%{opacity:0;transform:translateY(-40px)}}
+#cap{position:fixed;left:0;right:0;bottom:4vh;text-align:center;z-index:50;font:800 clamp(22px,3.2vw,38px) 'Baloo 2';text-shadow:0 2px 16px rgba(0,0,0,.7)}
+#dbg{position:fixed;left:8px;bottom:18px;z-index:99;font:600 12px monospace;background:rgba(0,0,0,.65);color:#9f9;padding:6px 10px;border-radius:8px;white-space:pre}
+body[data-debug="0"] #dbg{display:none}
+#gate,#banner,#gateArms,#card,#scorecard{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(31,19,56,.9);z-index:90;text-align:center;padding:24px}
+#gateArms{background:rgba(31,19,56,.5)}#banner{background:#3a0d0d;color:#ffb3b3;font-weight:800;font-size:22px}
+#card{background:rgba(31,19,56,.35);pointer-events:none}
+button.big{font:800 30px 'Baloo 2';padding:16px 46px;border:0;border-radius:18px;background:var(--gold);color:var(--ink);cursor:pointer;margin-top:18px}
+#ring{width:110px;height:110px;border-radius:50%;border:6px solid rgba(255,255,255,.25);border-top-color:var(--gold);margin-top:18px}#ring.ok{border-color:#7ddba3}
+#gateMsg{font:800 30px 'Baloo 2'}
+#card h2,#scorecard h1{font:800 64px 'Baloo 2';margin:0;color:var(--gold)}#card p,#scorecard p{font-size:24px;margin:8px 0}
+#medal{font-size:120px;line-height:1}#scorecard{display:none}
+#okBtn{position:fixed;right:24px;bottom:24px;z-index:95}
+#pause,#exit{position:fixed;top:1.6vh;z-index:60;background:rgba(0,0,0,.45);color:#fff;border:0;border-radius:12px;padding:8px 12px;font-size:18px;cursor:pointer}#pause{right:64px}#exit{right:14px}
+.hidden{display:none!important}
+</style></head><body data-phase="intro" data-debug="1">
+<div id="stage">
+  <div id="novaWrap"><video id="novaAmbient" autoplay muted playsinline></video><video id="novaMain" autoplay muted playsinline></video><div class="ice"></div></div>
+  <div id="camWrap"><video id="usercam" autoplay muted playsinline></video><canvas id="fx"></canvas><div class="ice"></div></div>
+</div>
+<div id="animal"></div><div id="holdbar"></div>
+<div id="hud"><div id="dots"></div><div class="pill"><span id="pts">0</span></div><div id="streak"></div><div id="score"></div><div id="tag"></div></div>
+<div id="pop"></div><div id="cap"></div><div id="dbg"></div>
+<button id="pause">⏸</button><button id="exit">✕</button>
+<div id="gate"><div style="font:800 48px 'Baloo 2'">❄ Freeze</div><div id="gateSub" style="opacity:.85;margin-top:6px;max-width:560px;font-size:20px"></div><button id="start" class="big" disabled>▶</button></div>
+<div id="gateArms" class="hidden"><div id="gateMsg"></div><div id="ring"></div></div>
+<div id="card" class="hidden"><h2 id="cardPts"></h2><p id="cardLine"></p></div>
+<div id="scorecard"><div id="medal"></div><h1 id="finalScore">0</h1><p id="finalLine"></p><button id="again" class="big">↻</button></div>
+<div id="banner" class="hidden"></div>
+<script type="module">
+/* FREEZE v2 — built on the live-ai-game-architecture skill:
+   REFEREE (camera + Hold judge) decides · REACTOR (recorded lines, ice, animal picture, her video PAUSING) answers instantly ·
+   TALKER (live AI) speaks only at the intro, the two breathers and the ending. All game timing runs on the audio clock. */
+import { createKit } from '../shared/game-kit.js';
+import { createJudges } from '../beta/freeze2/judges.js';
+import { Hold } from '../beta/freeze2/hold.js';
+import { Stage } from '../shared/stage.js';
+import { createLights } from '../shared/nova-lights.js';
+import { createMoves } from '../shared/move-recipes.js';
+const $ = id => document.getElementById(id);
+const Q = new URLSearchParams(location.search);
+const LANG = (Q.get('lang') || localStorage.getItem('nova-lang') || 'en') === 'he' ? 'he' : 'en';
+const G = (Q.get('g') || localStorage.getItem('nova-gender') || 'm') === 'f' ? 'f' : 'm';
+const LKEY = LANG === 'he' ? `he-${G}` : 'en';
+if (Q.get('debug') === '0') document.body.dataset.debug = '0';
+if (LANG === 'he') for (const id of ['cap','card','scorecard','gateArms','gate']) $(id).dir = 'rtl';
+const UI = LANG === 'he'
+  ? { sub:'רוקדים כשיש מוזיקה — קופאים כשהיא נעצרת!', gate:'תתרחק קצת — שאראה אותך', froze:'קפאונים', animals:{ flamingo:'פלמינגו', frog:'צפרדע', bear:'דוב', star:'כוכב' } }
+  : { sub:'Dance when the music plays — FREEZE when it stops!', gate:'Step back — let me see you', froze:'freezes held', animals:{ flamingo:'Flamingo', frog:'Frog', bear:'Bear', star:'Star' } };
+const EMO = { flamingo:'🦩', frog:'🐸', bear:'🐻', star:'⭐' };
+$('gateSub').textContent = UI.sub; $('gateMsg').textContent = UI.gate;
+
+// ───────── data + engines ─────────
+const S = await (await fetch('../beta/freeze2/script.json')).json();
+const LINES = await (await fetch(`../beta/freeze2/lines-${LKEY}.json`)).json();
+let MANIFEST = {}; try { MANIFEST = await (await fetch(`../audio/freeze2/${LKEY}/manifest.json`)).json(); } catch(e){}
+let GESTURES = {}; try { GESTURES = await (await fetch('/data/gestures.json')).json(); } catch(e){ console.warn('[STAGE] no gesture library'); }
+const K = await createKit({ tier:'kids', mirror:true, game:'freeze2', lang:LANG, refCandidates:[] });
+const J = createJudges(S.tune);
+const now = () => performance.now() / 1000;
+const T0 = now();
+
+// ───────── audio: song + bare beat on ONE clock, recorded lines ─────────
+const AC = new (window.AudioContext || window.webkitAudioContext)();
+const gMel = AC.createGain(), gBeat = AC.createGain(); gMel.gain.value = 0; gBeat.gain.value = 0; gMel.connect(AC.destination); gBeat.connect(AC.destination);
+let SONG = null, BEAT = null, songSrc = null, beatSrc = null;
+const CLIPS = {};
+async function loadBuf(url){ const r = await fetch(url); if (!r.ok) throw new Error('missing ' + url); return AC.decodeAudioData(await r.arrayBuffer()); }
+/* [ADAPT 2026-09-27 · #3] The bare beat is NOT an asset. script.json asked for
+   /audio/bare_beat_129.mp3; no such file is served by rt_lk or exists on the volume — preload()
+   would have thrown "missing" and the game would refuse to start. The live Freeze synthesizes it
+   offline (animal-freeze.html:1109 _makeBeat: kick + woodblock, ONE beat-cycle, looped
+   sample-accurately) and that synth is the ear-approved freezefix.mp3 sound. Ported verbatim. */
+async function makeBeat(){
+  const BEATLEN = 60 / S.music.bpm, sr = 44100, len = Math.round(BEATLEN * sr);
+  const oc = new OfflineAudioContext(1, len, sr);
+  const o = oc.createOscillator(), g = oc.createGain();               // kick at beat start
+  o.frequency.setValueAtTime(155, 0); o.frequency.exponentialRampToValueAtTime(45, 0.16);
+  g.gain.setValueAtTime(0.9, 0); g.gain.exponentialRampToValueAtTime(0.001, 0.16);
+  o.connect(g); g.connect(oc.destination); o.start(0); o.stop(0.17);
+  const w = oc.createOscillator(), wg = oc.createGain();              // woodblock at the half-beat
+  w.frequency.value = 1500;
+  wg.gain.setValueAtTime(0, 0); wg.gain.setValueAtTime(0.5, BEATLEN/2);
+  wg.gain.exponentialRampToValueAtTime(0.001, BEATLEN/2 + 0.05);
+  w.connect(wg); wg.connect(oc.destination); w.start(BEATLEN/2); w.stop(BEATLEN/2 + 0.06);
+  return await oc.startRendering();
+}
+async function preload(){
+  /* [FIX 2026-09-27] the song used to be fetched BEFORE the clips; over the pod proxy that serialised
+     4.5MB in front of everything else. All of it now loads at once, and only ONE take per line is
+     required to start — the spare takes (the variety that stops her sounding like a recording) fill
+     in behind the game and are used as soon as they land. Measured 85s -> the game starts as soon as
+     the song and 17 first takes are in. A missing LINE is still fatal; a missing spare take is not. */
+  const ids = Object.keys(LINES).filter(k => !k.startsWith('_')), missing = [];
+  const first = ids.map(async id => { const files = MANIFEST[id] || []; if (!files.length){ missing.push(id); return; }
+    CLIPS[id] = [await loadBuf(`../audio/freeze2/${LKEY}/${files[0]}`)]; });
+  const song = loadBuf(S.music.song).then(b => { SONG = b; });
+  BEAT = await makeBeat();
+  await Promise.all([song, ...first]);
+  if (missing.length) throw new Error('missing clips: ' + missing.join(', '));
+  for (const id of ids) for (const f of (MANIFEST[id] || []).slice(1))
+    loadBuf(`../audio/freeze2/${LKEY}/${f}`).then(b => CLIPS[id].push(b)).catch(()=>{});
+}
+const pickBuf = id => { const t = CLIPS[id]; return t ? t[Math.floor(Math.random() * t.length)] : null; };
+function playAt(id, when, caption = true){                   // schedule a recorded line on the audio clock
+  const buf = pickBuf(id); if (!buf) return Promise.resolve();
+  const s = AC.createBufferSource(); s.buffer = buf; s.connect(AC.destination); s.start(Math.max(when, AC.currentTime));
+  const delay = Math.max(0, (when - AC.currentTime) * 1000);
+  if (caption) setTimeout(() => { $('cap').textContent = LINES[id] || ''; }, delay);
+  return new Promise(res => { s.onended = () => { if (caption && $('cap').textContent === (LINES[id] || '')) $('cap').textContent = ''; res(); }; });
+}
+const play = (id, caption = true) => playAt(id, AC.currentTime, caption);
+function sfx(kind){ const m = { ding:[1568,180,'sine'], twinkle:[1320,160,'sine'], soft:[520,160,'sine'] }[kind]; if (!m) return;
+  try { const o = AC.createOscillator(), g = AC.createGain(); o.type = m[2]; o.frequency.value = m[0]; g.gain.value = .14; o.connect(g).connect(AC.destination); o.start(); g.gain.exponentialRampToValueAtTime(.0001, AC.currentTime + m[1]/1000); o.stop(AC.currentTime + m[1]/1000); } catch(e){} }
+function startMusic(songPos, at){
+  stopMusic();
+  songSrc = AC.createBufferSource(); songSrc.buffer = SONG; songSrc.connect(gMel);
+  beatSrc = AC.createBufferSource(); beatSrc.buffer = BEAT; beatSrc.loop = true; beatSrc.connect(gBeat);
+  gMel.gain.setValueAtTime(S.music.melodyVol, at); gBeat.gain.setValueAtTime(0, at);
+  songSrc.start(at, songPos); beatSrc.start(at, songPos % BEAT.duration);          // both locked to the same clock → the beat is always in time
+}
+function stopMusic(at = AC.currentTime){ try { gMel.gain.cancelScheduledValues(at); gBeat.gain.cancelScheduledValues(at);
+  gMel.gain.setTargetAtTime(0, at, 0.15); gBeat.gain.setTargetAtTime(0, at, 0.15); songSrc?.stop(at + 0.6); beatSrc?.stop(at + 0.6); } catch(e){} songSrc = beatSrc = null; }
+
+// ───────── body + brain (the TALKER only at pauses) ─────────
+function setBody(id){ try { K.bridge?.setBody?.(id); } catch(e){} }
+/* PAUSE = she freezes mid-dance, zero clip switching.
+   [FIX 2026-09-27 · self-test] v.play() returns a PROMISE, and pausing 2.5s later rejects it
+   ("The play() request was interrupted by a call to pause()"). Unhandled, every single freeze threw
+   a promise rejection that game-kit's global handler writes into the debug strip as an ERR — noise
+   that would hide a real error on the pod. Caught; the pause itself is unaffected. */
+function herVideo(playing){ for (const id of ['novaMain','novaAmbient']){ const v = $(id); try { playing ? v.play()?.catch(()=>{}) : v.pause(); } catch(e){} } }
+// [ADAPT] same bridge calls as novasays-fast: mic(bool), note({kind}) — 'show' also stops the silence timer and drops transcripts in rt_lk
+/* [ADAPT 2026-09-27 · #6] setPhase BEFORE the gates. K.setPhase (game-kit.js:47) routes the
+   voice itself — phase 'game' → routeVoice('air'), which re-opens her audio gain to 1 and
+   downgrades the gate to 'air'. Called last (as the pack and novasays-fast have it) it silently
+   undoes the hard gate one line above it. Show-mode is the real wall, so nothing leaked in the
+   FAST session either way — but the order should not depend on that. */
+function brainOffstage(){ K.setPhase('game'); try { K.bridge?.mic?.(false); K.bridge?.note?.({ kind:'speak-gate', on:true }); K.bridge?.note?.({ kind:'show', on:true }); } catch(e){} document.body.dataset.phase = 'game'; }
+function brainOnstage(phase){ try { K.bridge?.note?.({ kind:'show', on:false }); K.bridge?.note?.({ kind:'speak-gate', on:false }); K.bridge?.mic?.(true); } catch(e){} K.setPhase(phase); document.body.dataset.phase = phase;
+  OPEN = null; moves.clear(); }                                          // a breather or the ending: no action is open, drop every light
+/* ───────── THE STAGE MANAGER (docs/STAGE-MANAGER.md §9.1 migration) ─────────
+   Every live line, every fact and every praise decision now goes through ONE owner. The page no
+   longer calls the brain to speak: it asks the stage, and the stage speaks only in a phase marked
+   live, only when nobody has talked for 600ms, and falls back to a recording after 3s rather than
+   arriving late. Facts go in silently, tagged with the camera's own confidence, so a line can only
+   be as specific as what was actually seen. */
+const stage = new Stage({
+  now: () => performance.now(),
+  remember: text => { try { K.bridge?.note?.({ kind:'remember', text }); } catch(e){} },
+  speakNow: text => { try { K.bridge?.note?.({ kind:'section-end', speak:true, text }); } catch(e){} },
+  playClip: id => play(id),
+  setBody: id => setBody(id),
+  light:   cmd => { try { K.L?.[cmd]?.(); } catch(e){} },
+  log:     s => console.log(s),
+  cfg: { restBody: S.talkBody },
+});
+stage.loadGestures(GESTURES.current || {});   // only MEASURED bakes; the fast ones (§4) are not baked yet
+/* Memory is per DEVICE, not per child: the page never learns the name (the brain does), so keying
+   by name would silently store nothing. One honest list, loaded before her greeting. */
+const MEMKEY = 'nova-mem-freeze2';
+try { stage.loadMemory(JSON.parse(localStorage.getItem(MEMKEY) || '[]')); } catch(e){}
+const saveMemory = () => { try { localStorage.setItem(MEMKEY, JSON.stringify(stage.facts)); } catch(e){} };
+setInterval(() => stage.tick(), 100);                                   // the heartbeat
+// turn state: BOTH voices. Her audio the bridge already reported; the child's arrives from rt_lk's
+// VAD as status.hearing (added this session) — without it the room never counts as quiet again.
+try { K.bridge?.onSpeech?.({ started: () => stage.setKidSpeaking(true), stopped: () => stage.setKidSpeaking(false) }); } catch(e){}
+try { K.bridge?.onHerAudio?.({ playing: () => stage.setNovaSpeaking(true), ended: () => stage.setNovaSpeaking(false) }); } catch(e){}
+/* §6 praise templates — recorded clips only, chosen by the judge's confidence. HIGH names the
+   animal ("Perfect flamingo!"), MID stays generic ("STATUE!"), LOW says nothing at all rather than
+   praise a hold the camera could barely see. This is the false-praise fix in data form. */
+const PRAISE = { freeze: { high:['held.flamingo','held.frog','held.bear','held.star'], mid:['held.statue'], low:[] } };
+
+// ───────── the REFEREE ─────────
+let hold = null, lastHold = null, holdResolve = null, last = null, paused = false;   // lastHold survives endHold so react() can ask it how SURE it was
+
+/* ───────── the light layer + the move recipes (nova-moves-v4, WIRING-ALL-GAMES.md) ─────────
+   #usercam here is object-fit:cover, which the module reads off the CSS itself, so no `fit` is passed.
+   The recipes only SHOW: beta/freeze2/judges.js and hold.js still decide every verdict. */
+const lights = createLights($('fx'), { video: $('usercam'), debug: Q.get('dots') === '1' });
+const moves  = createMoves(lights, { mirror: true });                    // [ADAPT] = createKit's mirror:true
+let OPEN = null;                                                         // the one open action, or null
+const SHAPE_BONUS = ['star', 'flamingo', 'frog', 'bear'];                // every animal this script uses has a shape recipe
+
+K.onKid = (out, k) => { if (!k) return; last = k; const t = now(); J.update(k, t);
+  lights.feed(k, t);
+  if (OPEN && !paused) moves.live(OPEN, k, t);
+  if (hold && !paused){ const r = hold.feed(k, t); if (r) endHold(r); } dbg(); };
+function beginHold(dur){ return new Promise(res => { hold = lastHold = new Hold(J, now(), dur, S.tune); holdResolve = res; bar(dur); }); }
+function endHold(r){ if (!hold) return; hold = null; $('holdbar').style.width = '0'; const f = holdResolve; holdResolve = null; f?.(r); }
+setInterval(() => { if (hold && !paused && now() >= hold.t0 + hold.dur + 0.4) endHold(hold.finish()); }, 150);   // frames stopped → finish with what we saw
+function bar(sec){ const b = $('holdbar'); b.style.transition = 'none'; b.style.width = '100%'; void b.offsetWidth; b.style.transition = `width ${sec}s linear`; b.style.width = '0'; }
+
+// ───────── pause / tab / presence ─────────
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function whilePaused(){ while (paused) await sleep(150); }
+function setPaused(v){ paused = v; if (v){ AC.suspend(); herVideo(false); } else { AC.resume(); herVideo(true); } }
+document.addEventListener('visibilitychange', () => setPaused(document.hidden));
+$('pause').onclick = () => setPaused(!paused);
+async function presence(){
+  if (last && J.sw(last)) return;
+  const g = $('gateArms'); g.classList.remove('hidden');
+  await new Promise(res => { let ok = null; const t = setInterval(() => { if (last && J.sw(last)){ ok ??= now(); if (now() - ok > 0.8){ clearInterval(t); res(); } } else ok = null; }, 100); });
+  g.classList.add('hidden');
+}
+
+// ───────── score ─────────
+let pts = 0, streak = 0, bestStreak = 0, heldN = 0, total = 0, roundLog = [], animalsHeld = {}, maxPts = 0;
+function addPts(n){ pts += n; $('pts').textContent = pts; }
+function pop(text, color){ const p = $('pop'); p.textContent = text; p.style.color = color; p.classList.remove('show'); void p.offsetWidth; p.classList.add('show'); }
+function showAnimal(a){ $('animal').innerHTML = `<div class="e">${EMO[a]}</div><div class="l">${UI.animals[a]}</div>`; $('animal').classList.add('on'); }
+function hideAnimal(){ $('animal').classList.remove('on'); }
+
+// ───────── one round, fully scheduled on the audio clock ─────────
+async function round(R, idx){
+  await whilePaused(); await presence();
+  /* A round is a SHOW phase: the stage refuses live speech in it outright, and any request still
+     pending from the breather can now only fall back to a recording — never arrive mid-round. */
+  brainOffstage(); stage.phase(`round${R.n}`, { live:false }); setBody(S.gameBody); herVideo(true); K.hud.dots(idx + 1, S.rounds.length);
+  if (R.intro) await play(R.intro);
+  const beat = 60 / S.music.bpm, off = S.music.beatOffsetS;
+  /* [FIX 2026-09-27] start ON a beat — but never before the file starts. With the measured
+     offset (0.151s) round 1's songStartS 0.0 snapped to -0.313s, and start(when, negativeOffset)
+     throws RangeError: the game would have died on its first round. */
+  let songPos = off + Math.round((R.songStartS - off) / beat) * beat;
+  while (songPos < 0) songPos += beat;
+  const t0 = AC.currentTime + 0.25; startMusic(songPos, t0);
+  OPEN = 'freeze.dance'; moves.cue(OPEN);                                // music on → every moving joint glows with its speed
+  // build the freeze times
+  const stops = []; let b = 0;
+  for (const F of R.freezes){ b += F.beatsAfterPrev ?? R.beatsBetween; stops.push({ ...F, at: t0 + b * beat }); b += Math.round(F.hold / beat); }
+  const rs = { n:R.n, held:0, almost:0, missed:0, noshow:0, pts0:pts };
+  for (let i = 0; i < stops.length; i++){
+    const F = stops[i];
+    if (F.final) playAt('tr.last', F.at - 5.2);
+    if (F.warn && !F.fakeout) playAt('warn.ready', F.at - S.warnLeadS);            // REACTOR: recorded, rule-timed — never the live AI
+    // THE STOP — melody out, bare beat in, sting, on the exact audio time
+    gMel.gain.setValueAtTime(0, F.at); gBeat.gain.setValueAtTime(S.music.beatVol, F.at);
+    playAt('sting.freeze', F.at, false);
+    // melt back at the end of the hold
+    gMel.gain.setValueAtTime(S.music.melodyVol, F.at + F.hold); gBeat.gain.setValueAtTime(0, F.at + F.hold);
+    // wait for the stop on the audio clock, then the visual freeze
+    /* The SOUND of the stop is sample-accurate — melody-out/beat-in/sting are all scheduled on the
+       audio clock above. This loop only drives the VISUAL freeze, so it polls coarsely until the
+       last 50ms and then tightly: measured 7-79ms late at 10ms flat (self-test), and the visual is
+       what a child sees her body do. [FIX 2026-09-27] */
+    while (AC.currentTime < F.at) await sleep(AC.currentTime < F.at - 0.05 ? 10 : 1);
+    document.body.classList.add('frozen'); herVideo(false); showAnimal(F.animal);
+    /* [PROOF 2026-09-27] the founder's step-6 evidence, measured by the page itself: the audio-clock
+       time of every stop against its schedule, and whether her video really stopped on this frame. */
+    console.log(`[STOP] r${R.n} #${i+1} ${F.animal}${F.fakeout ? ' FAKEOUT' : ''} sched ${F.at.toFixed(3)} actual ${AC.currentTime.toFixed(3)} delta ${((AC.currentTime - F.at)*1000).toFixed(0)}ms · herVideo paused=${$('novaMain').paused} · hold ${F.hold}s`);
+    /* [ADAPT] the kit's freezeStart/freezeEnd drew the OLD ice overlay; freeze.stop owns that picture now
+       (frost climbing, the wobbling part in soft orange, STATUE!/ALMOST!). The one thing freezeEnd also did
+       was ring the ding on a held freeze (light-engine.js:195) — kept explicitly below so the sound survives. */
+    moves.clear('freeze.dance'); OPEN = 'freeze.stop'; moves.cue(OPEN);
+    const r = await beginHold(F.hold);
+    document.body.classList.remove('frozen'); herVideo(true); hideAnimal();
+    OPEN = null;
+    moves.result('freeze.stop', r === 'held' ? 'ok' : r === 'almost' ? 'near' : 'miss', lastHold);
+    if (r === 'held') try { K.L.audio?.ding?.(); } catch(e){}
+    /* the animal shape as a BONUS flourish — judged once from the last frame of the hold, never a second
+       live action (WIRING-ALL-GAMES.md: one open action at a time), and it changes no score. */
+    if (r === 'held' && last && SHAPE_BONUS.includes(F.animal)){
+      const sid = 'freeze.shape.' + F.animal;
+      moves.cue(sid); const sj = moves.live(sid, last);
+      moves.result(sid, sj?.ok ? 'ok' : 'miss', sj); setTimeout(() => moves.clear(sid), 900);
+    }
+    setTimeout(() => { moves.clear('freeze.stop'); if (!OPEN){ OPEN = 'freeze.dance'; moves.cue(OPEN); } }, 900);
+    console.log(`[VERDICT] r${R.n} #${i+1} ${F.animal} → ${r} · herVideo resumed=${!$('novaMain').paused} · thr.move ${J.st.thr.move.toFixed(2)} · energy ${J.st.energy.toFixed(2)}`);
+    await react(r, F, rs);
+  }
+  // let the music ride 2s, then fade into the breather
+  await sleep(2000); stopMusic();
+  rs.pts = pts - rs.pts0; roundLog.push(rs); return rs;
+}
+async function react(r, F, rs){
+  total++; rs[r]++;
+  const conf = lastHold?.confidence?.() ?? 1;          // how sure the camera is — decides how specific praise may be
+  await sleep(S.verdictDelayMs);
+  if (r === 'held'){
+    heldN++; streak++; bestStreak = Math.max(bestStreak, streak); animalsHeld[F.animal] = (animalsHeld[F.animal] || 0) + 1;
+    let n = S.points.held * (streak >= S.points.streakFrom ? S.points.streakMult : 1) + (F.final ? S.points.starBonus : 0);
+    // [FIX 2026-09-28] the 🔥 streak text was swallowed into an earlier comment on this line and had
+    // stopped updating on a held freeze. (The ding used to ride on K.L.freezeEnd(true); since the
+    // freeze.stop recipe took over that picture it is rung explicitly at the verdict instead.)
+    addPts(n); pop(`+${n}`, '#ffc23e');
+    $('streak').textContent = streak >= 2 ? `🔥x${streak}` : '';
+    /* §6 PRAISE BY CONFIDENCE — this is the false-praise fix made structural. A clip that NAMES the
+       animal only plays when the judge saw the whole hold and it was clearly still; a borderline
+       hold gets the generic "STATUE!"; a hold the camera barely saw gets NOTHING said about it. */
+    const clip = stage.praise(PRAISE.freeze, conf,
+      list => list.includes(`held.${F.animal}`) ? `held.${F.animal}` : list[0]);   // the HIGH list is per-animal: pick THIS animal, never a random one
+    if (clip) play(clip); else console.log(`[STAGE] praise withheld (conf ${conf.toFixed(2)})`);
+  } else if (r === 'almost'){
+    streak = 0; $('streak').textContent = ''; addPts(S.points.almost); sfx('soft'); pop(`+${S.points.almost}`, '#aee8ff');
+    play(F.fakeout ? 'fakeout' : 'almost');
+  } else if (r === 'missed'){
+    streak = 0; $('streak').textContent = ''; play(F.fakeout ? 'fakeout' : 'missed');
+  }                                                                                  // noshow: silent — never judged
+  /* The fact goes to the stage, not to the brain: time-stamped, confidence-tagged, coalesced under
+     one key and expiring after 2.5s, so a line she says later can only describe what was just seen. */
+  stage.event('freeze_result', { n: total, animal: F.animal, result: r, fakeout: !!F.fakeout, points: pts, streak },
+              { key: 'freeze', conf });
+  console.log(`[STAGE] fact freeze#${total} ${F.animal} → ${r} conf ${conf.toFixed(2)}`);
+}
+
+// ───────── breathers + ending (the TALKER) ─────────
+async function breather(rs, idx){
+  brainOnstage('between'); stage.phase(`breather${idx+1}`, { live:true }); setBody(S.talkBody); herVideo(true);
+  $('cardPts').textContent = `+${rs.pts}`; $('cardLine').textContent = `❄ ${rs.held}/${rs.held + rs.almost + rs.missed} ${UI.froze}`; $('card').classList.remove('hidden');
+  const best = Object.entries(animalsHeld).sort((a,b) => b[1]-a[1])[0]?.[0];
+  /* THE STAGE owns this line now: it waits for 600ms of real quiet (her audio ended AND the child
+     isn't mid-sentence), writes the fresh facts in first so the line is true, and if no quiet
+     moment appears within 3s it plays the recorded card line instead of speaking late over the kid. */
+  const how = await stage.requestSpeak(
+    `Round ${rs.n} of the Freeze game just ended. Real facts: held ${rs.held}, almost ${rs.almost}, missed ${rs.missed}` +
+    (best ? `, best animal so far: ${best}` : '') + `, total points ${pts}. Say ONE excited, specific line to the child (max 10 words), then stop. Never negative. Do NOT use a name unless the child told you one.`,
+    { fallbackClip: idx === 0 ? 'fallback.card1' : 'fallback.card2' });
+  console.log(`[STAGE] breather${idx+1} → ${how}`);
+  await sleep(S.breather.afterLineMs);                                               // a beat for the child to answer (a real turn → she may answer once)
+  $('card').classList.add('hidden');
+}
+async function ending(){
+  brainOnstage('ending'); stage.phase('ending', { live:true }); setBody(S.talkBody); herVideo(true);
+  const pct = pts / Math.max(1, maxPts), medal = pct >= S.medals.goldFrom ? '🥇' : pct >= S.medals.silverFrom ? '🥈' : '🥉';
+  const best = Object.entries(animalsHeld).sort((a,b) => b[1]-a[1])[0]?.[0];
+  $('medal').textContent = medal; $('finalScore').textContent = pts; $('finalLine').textContent = `❄ ${heldN}/${total} ${UI.froze} · 🔥x${bestStreak}`;
+  $('scorecard').style.display = 'flex';
+  const how = await stage.requestSpeak(
+    `The Freeze game is over. Real facts: ${pts} points, medal ${medal}, held ${heldN} of ${total} freezes, best streak ${bestStreak}` +
+    (best ? `, best animal ${best}` : '') + `. Celebrate using ONLY these facts, ask "Did you have fun?" and wait. Do NOT use a name unless the child told you one.`,
+    { fallbackClip: 'fallback.end' });
+  console.log(`[STAGE] ending → ${how}`);
+  /* §7 memory: what she may truthfully remember next time. Device-level, game facts only. */
+  if (best) stage.addFact(`best freeze animal: ${best}`);
+  stage.addFact(`last Freeze score: ${pts} (held ${heldN}/${total})`);
+  saveMemory();
+  K.pulse({ game:'freeze2', pts, heldN, total, bestStreak, rounds:roundLog, seconds:Math.round(now() - T0), stage:{ spoke: how, facts: stage.facts.length } });
+}
+function maxFor(){ let m = 0, s = 0; for (const R of S.rounds) for (const F of R.freezes){ s++; m += S.points.held * (s >= S.points.streakFrom ? S.points.streakMult : 1) + (F.final ? S.points.starBonus : 0); } return m; }
+
+async function main(){
+  // TALKER: the live intro (?intro=freeze) — greet, name, rule, wait for a yes (consent event or ✓)
+  brainOnstage('intro'); stage.phase('intro', { live:true }); setBody(S.talkBody);
+  /* §7 memory, BEFORE her greeting: what she is allowed to remember from earlier plays on this
+     device. It is a silent note — it can never make her speak, it only makes a later line true. */
+  bootMark('intro-waiting-for-yes');
+  const memo = stage.memoryNote();
+  if (memo){ stage.a.remember(memo); console.log('[STAGE] memory loaded: ' + stage.facts.length + ' fact(s)'); }
+  await new Promise(res => { const b = document.createElement('button'); b.id = 'okBtn'; b.className = 'big'; b.textContent = '✓';
+    /* [FIX 2026-09-27 · found on a pod] Tell the brain the child answered. Her greet ends with a
+       question, which sets the ask-lock (the WAIT LAW); a tap that never reaches the brain leaves it
+       set for the whole game, so both breathers AND the ending log "queued (not a boundary)" and she
+       speaks no live line at all — the recorded fallbacks cover for her and the failure is invisible. */
+    const go = () => { try { K.bridge?.note?.({ kind:'tap' }); } catch(e){} b.remove(); res(); };
+    b.onclick = go; document.body.appendChild(b); window.addEventListener('nova:consent', go, { once:true }); });
+  maxPts = maxFor();
+  // calibration during the countdown: the child stands ready → their still level
+  brainOffstage(); J.startSample('still'); const cd = play('go.countdown'); await sleep(S.calibrationS * 1000); J.stopSample(); dbgNote('[CAL] ' + JSON.stringify(J.finishCalibration())); await cd;
+  for (let i = 0; i < S.rounds.length; i++){ const rs = await round(S.rounds[i], i); if (i < S.rounds.length - 1) await breather(rs, i); }
+  await ending();
+}
+
+// ───────── debug + boot ─────────
+let DBGN = ''; function dbgNote(s){ DBGN = s; console.log('[FZ2]', s); dbg(); }
+function dbg(){ const el = $('dbg'); if (!el || document.body.dataset.debug === '0') return;
+  el.textContent = `t ${(now()-T0).toFixed(1)}s | AC ${AC.currentTime.toFixed(2)} | E ${J.st.energy.toFixed(3)} move>${J.st.thr.move.toFixed(2)} | hold ${hold ? (now()-hold.t0).toFixed(1)+'s' : '-'} | pts ${pts} 🔥${streak} | ${DBGN}`; }
+$('exit').onclick = () => location.href = '/';
+$('again').onclick = () => location.reload();
+/* [FIX 2026-09-27 · found by three dead runs] ▶ ships DISABLED and is enabled here, the line before
+   K.boot wires its handler. The button was on screen from the first paint while the module was still
+   loading its data and the pose kit, so a tap in that window hit a button with no listener: nothing
+   happened, ever, with no error and no message. A 6-year-old taps the moment they see it. */
+$('start').disabled = false;
+/* [2026-09-28] A DOM-visible boot marker. Console logs from this page proved unreadable from a test
+   harness (and Chrome no longer writes console to its debug log), so three separate stalls looked
+   identical: a game that opened its gate and then did nothing, with nothing anywhere to say where it
+   stopped. body[data-boot] always says which step is running — for a test, and for anyone asking
+   "why is the screen black". */
+const bootMark = s => { document.body.dataset.boot = s; console.log('[BOOT]', s); };
+/* The kit owns the three slowest startup steps (camera, MoveNet, presence gate) and reports none of
+   them. Wrapped — not edited — so a stall says WHICH one. This is how the "gate opens and then
+   nothing happens for ever" stall was finally localised. */
+for (const [name, fn] of [['camera','startCamera'], ['pose','initPose'], ['presence','presenceGate']]){
+  const orig = K[fn].bind(K);
+  K[fn] = async (...a) => { bootMark(name + '-start'); const r = await orig(...a); bootMark(name + '-done' + (r === false ? '-FAILED' : '')); return r; };
+}
+bootMark('wired');
+/* [FIX 2026-09-28] The kit's K.boot runs its OWN presence gate before handing over, and on two pods
+   and this laptop it never returned: its loop is driven by requestAnimationFrame inside an async
+   tick, and once a frame is missed or an inference stalls there is no timer to recover — the game
+   sat at "presence-start" for ever with nothing on screen. This page does not need it: it runs its
+   own presence check (presence(), on the judge's own shoulder-width read) before EVERY round, which
+   is stricter and recovers by itself. So the boot sequence is driven here instead of by K.boot —
+   same three steps, same order, no second gate. */
+$('start').onclick = async () => {
+  $('gate')?.classList.add('hidden');
+  bootMark('gate-open');
+  if (!(await K.startCamera())) return;                      // banners on its own
+  try { await K.initPose(); } catch(e){ return K.banner('Pose engine (MoveNet) failed: ' + e.message); }
+  bootMark('kit-ready');
+  await go();
+};
+async function go(){
+  /* [FIX 2026-09-27 · measured on a pod] ORDER. preload() pulls the 4.5MB song plus 51 clips, and
+     over the RunPod proxy that measured 85 SECONDS — during which the pack's order left her panel
+     black and nothing on screen explained it. Her video attaches FIRST now (she is on screen in a
+     few seconds, which is the whole point of the avatar), the audio loads after with a caption
+     saying so, and main() still does not start until every clip is in memory — a missing clip must
+     stop the game before a child plays it, not surprise them mid-round. */
+  if (!(window.LivekitClient || window.LiveKitClient)) return K.banner('LiveKit client missing — her video cannot attach');
+  /* [ADAPT 2026-09-27 · #5] intro:'freeze' is passed explicitly, not left to the URL. rt_lk keys
+     two things on it: the Freeze greet (rt_lk.py:697 / :687 for Hebrew — the wait law, gender and
+     the one-line rule are already right there) and `_freeze_mode` (rt_lk.py:652) = "the page owns
+     the game, the brain self-triggers OFF" — exactly this game's contract. A founder who drops
+     ?intro= from the link must not silently get the generic greet and a self-triggering brain. */
+  if (!K.bridge?.attachNova) return K.banner('Nova bridge missing (/shared/nova-bridge.js)');
+  /* [FIX 2026-09-27 · run 3 on a pod] NOT awaited. The pack awaited the attach, and on a run where
+     the LiveKit join hung the whole page stopped there: no music, no game, no message — a child
+     staring at nothing. That breaks the skill's own rules 7 and 9 (the game never waits for the AI;
+     it must work with the avatar OFF). Her video now arrives whenever it arrives, the game does not
+     depend on it, and a failed attach banners instead of hanging. */
+  K.bridge.attachNova({ intro:'freeze', onVideo: v => { $('novaMain').srcObject = v; $('novaAmbient').srcObject = v; console.log('[NOVA] video attached'); } })
+    .catch(e => K.banner('Nova is not connected (the game still runs): ' + e.message));
+  bootMark('attaching');
+  $('cap').textContent = LANG === 'he' ? 'רגע, מביאה את המוזיקה…' : 'One second — getting the music…';
+  try { await AC.resume(); bootMark('audio-ctx'); await preload(); } catch(e){ return K.banner('Freeze cannot start: ' + e.message); }
+  bootMark('preloaded');
+  $('cap').textContent = '';
+  K.start(); bootMark('running'); main().catch(e => { bootMark('game-error'); K.banner('Game error: ' + e.message); });
+}
+</script></body></html>

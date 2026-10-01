@@ -1,0 +1,117 @@
+{
+ "cmd.armsUp.real": [
+  "cmd.armsUp.real.1.mp3"
+ ],
+ "cmd.armsUp.bare": [
+  "cmd.armsUp.bare.1.mp3",
+  "cmd.armsUp.bare.2.mp3"
+ ],
+ "cmd.armsOut.real": [
+  "cmd.armsOut.real.2.mp3"
+ ],
+ "cmd.armsOut.bare": [
+  "cmd.armsOut.bare.4.mp3"
+ ],
+ "cmd.handsOnHead.real": [
+  "cmd.handsOnHead.real.3.mp3",
+  "cmd.handsOnHead.real.4.mp3"
+ ],
+ "cmd.handsOnHead.bare": [
+  "cmd.handsOnHead.bare.1.mp3",
+  "cmd.handsOnHead.bare.2.mp3",
+  "cmd.handsOnHead.bare.3.mp3"
+ ],
+ "cmd.oneArm.real": [
+  "cmd.oneArm.real.3.mp3"
+ ],
+ "cmd.oneArm.bare": [
+  "cmd.oneArm.bare.1.mp3"
+ ],
+ "cmd.freeze.real": [
+  "cmd.freeze.real.2.mp3"
+ ],
+ "practice.still": [
+  "practice.still.1.mp3",
+  "practice.still.2.mp3",
+  "practice.still.3.mp3",
+  "practice.still.4.mp3"
+ ],
+ "practice.watch": [
+  "practice.watch.1.mp3",
+  "practice.watch.2.mp3",
+  "practice.watch.3.mp3",
+  "practice.watch.4.mp3"
+ ],
+ "practice.yes": [
+  "practice.yes.1.mp3",
+  "practice.yes.2.mp3",
+  "practice.yes.3.mp3",
+  "practice.yes.4.mp3"
+ ],
+ "practice.retry": [
+  "practice.retry.1.mp3",
+  "practice.retry.2.mp3",
+  "practice.retry.3.mp3",
+  "practice.retry.4.mp3"
+ ],
+ "practice.listen": [
+  "practice.listen.1.mp3",
+  "practice.listen.2.mp3",
+  "practice.listen.3.mp3",
+  "practice.listen.4.mp3"
+ ],
+ "practice.caught": [
+  "practice.caught.1.mp3",
+  "practice.caught.2.mp3",
+  "practice.caught.3.mp3",
+  "practice.caught.4.mp3"
+ ],
+ "practice.held": [
+  "practice.held.1.mp3",
+  "practice.held.2.mp3",
+  "practice.held.3.mp3",
+  "practice.held.4.mp3"
+ ],
+ "practice.go": [
+  "practice.go.1.mp3",
+  "practice.go.2.mp3",
+  "practice.go.3.mp3",
+  "practice.go.4.mp3"
+ ],
+ "fb.combo": [
+  "fb.combo.1.mp3",
+  "fb.combo.2.mp3",
+  "fb.combo.3.mp3",
+  "fb.combo.4.mp3"
+ ],
+ "tr.round2": [
+  "tr.round2.1.mp3",
+  "tr.round2.2.mp3",
+  "tr.round2.3.mp3",
+  "tr.round2.4.mp3"
+ ],
+ "tr.round3": [
+  "tr.round3.1.mp3",
+  "tr.round3.2.mp3",
+  "tr.round3.3.mp3",
+  "tr.round3.4.mp3"
+ ],
+ "tr.done": [
+  "tr.done.1.mp3",
+  "tr.done.2.mp3",
+  "tr.done.3.mp3",
+  "tr.done.4.mp3"
+ ],
+ "fb.comeback": [
+  "fb.comeback.1.mp3",
+  "fb.comeback.2.mp3",
+  "fb.comeback.3.mp3",
+  "fb.comeback.4.mp3"
+ ],
+ "fallback.end": [
+  "fallback.end.1.mp3",
+  "fallback.end.2.mp3",
+  "fallback.end.3.mp3",
+  "fallback.end.4.mp3"
+ ]
+}

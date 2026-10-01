@@ -1,0 +1,52 @@
+{
+ "intro.watch": [
+  "intro.watch.1.mp3",
+  "intro.watch.2.mp3",
+  "intro.watch.3.mp3"
+ ],
+ "go.join": [
+  "go.join.1.mp3",
+  "go.join.2.mp3",
+  "go.join.3.mp3"
+ ],
+ "fb.yes": [
+  "fb.yes.1.mp3",
+  "fb.yes.2.mp3",
+  "fb.yes.3.mp3"
+ ],
+ "fb.groovy": [
+  "fb.groovy.1.mp3",
+  "fb.groovy.2.mp3",
+  "fb.groovy.3.mp3"
+ ],
+ "fb.streak": [
+  "fb.streak.1.mp3",
+  "fb.streak.2.mp3",
+  "fb.streak.3.mp3"
+ ],
+ "tr.round2": [
+  "tr.round2.1.mp3",
+  "tr.round2.2.mp3",
+  "tr.round2.3.mp3"
+ ],
+ "tr.round3": [
+  "tr.round3.1.mp3",
+  "tr.round3.2.mp3",
+  "tr.round3.3.mp3"
+ ],
+ "fallback.card1": [
+  "fallback.card1.1.mp3",
+  "fallback.card1.2.mp3",
+  "fallback.card1.3.mp3"
+ ],
+ "fallback.card2": [
+  "fallback.card2.1.mp3",
+  "fallback.card2.2.mp3",
+  "fallback.card2.3.mp3"
+ ],
+ "fallback.end": [
+  "fallback.end.1.mp3",
+  "fallback.end.2.mp3",
+  "fallback.end.3.mp3"
+ ]
+}

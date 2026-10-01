@@ -1,0 +1,87 @@
+{
+ "go.countdown": [
+  "go.countdown.1.mp3",
+  "go.countdown.2.mp3",
+  "go.countdown.3.mp3"
+ ],
+ "sting.freeze": [
+  "sting.freeze.1.mp3",
+  "sting.freeze.2.mp3",
+  "sting.freeze.3.mp3"
+ ],
+ "warn.ready": [
+  "warn.ready.1.mp3",
+  "warn.ready.2.mp3",
+  "warn.ready.3.mp3"
+ ],
+ "held.statue": [
+  "held.statue.1.mp3",
+  "held.statue.2.mp3",
+  "held.statue.3.mp3"
+ ],
+ "held.flamingo": [
+  "held.flamingo.1.mp3",
+  "held.flamingo.2.mp3",
+  "held.flamingo.3.mp3"
+ ],
+ "held.frog": [
+  "held.frog.1.mp3",
+  "held.frog.2.mp3",
+  "held.frog.3.mp3"
+ ],
+ "held.bear": [
+  "held.bear.1.mp3",
+  "held.bear.2.mp3",
+  "held.bear.3.mp3"
+ ],
+ "held.star": [
+  "held.star.1.mp3",
+  "held.star.2.mp3",
+  "held.star.3.mp3"
+ ],
+ "almost": [
+  "almost.1.mp3",
+  "almost.2.mp3",
+  "almost.3.mp3"
+ ],
+ "missed": [
+  "missed.1.mp3",
+  "missed.2.mp3",
+  "missed.3.mp3"
+ ],
+ "fakeout": [
+  "fakeout.1.mp3",
+  "fakeout.2.mp3",
+  "fakeout.3.mp3"
+ ],
+ "tr.round2": [
+  "tr.round2.1.mp3",
+  "tr.round2.2.mp3",
+  "tr.round2.3.mp3"
+ ],
+ "tr.round3": [
+  "tr.round3.1.mp3",
+  "tr.round3.2.mp3",
+  "tr.round3.3.mp3"
+ ],
+ "tr.last": [
+  "tr.last.1.mp3",
+  "tr.last.2.mp3",
+  "tr.last.3.mp3"
+ ],
+ "fallback.card1": [
+  "fallback.card1.1.mp3",
+  "fallback.card1.2.mp3",
+  "fallback.card1.3.mp3"
+ ],
+ "fallback.card2": [
+  "fallback.card2.1.mp3",
+  "fallback.card2.2.mp3",
+  "fallback.card2.3.mp3"
+ ],
+ "fallback.end": [
+  "fallback.end.1.mp3",
+  "fallback.end.2.mp3",
+  "fallback.end.3.mp3"
+ ]
+}

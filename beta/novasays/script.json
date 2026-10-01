@@ -1,0 +1,240 @@
+{
+ "version": "3.3",
+ "capSeconds": 210,
+ "lipMode": "engine",
+ "talkBody": "nova_idle2",
+ "bakeMs": {
+  "gest_star": 1000,
+  "gest_lefthand": 2750,
+  "gest_righthand": 2900,
+  "gest_clap": 2350,
+  "gest_bear": 4100
+ },
+ "peakMs": {
+  "gest_star": 720,
+  "gest_lefthand": 2480,
+  "gest_righthand": 2640,
+  "gest_clap": 2080,
+  "gest_bear": 3840
+ },
+ "windowOpensAtPeakFrac": 0.8,
+ "freezeWindowPadS": 1.2,
+ "streakBonusAt": 5,
+ "handoffStartTimeoutMs": 3000,
+ "handoffMaxMs": 12000,
+ "gapAfterFeedbackMs": 300,
+ "commands": {
+  "armsUp": {
+   "demo": "gest_star",
+   "judge": "armsUp",
+   "light": "bothWrists",
+   "trickable": true
+  },
+  "leftArm": {
+   "demo": "gest_lefthand",
+   "judge": "leftArm",
+   "light": "leftWrist",
+   "trickable": true
+  },
+  "rightArm": {
+   "demo": "gest_righthand",
+   "judge": "rightArm",
+   "light": "rightWrist",
+   "trickable": true
+  },
+  "clap": {
+   "demo": "gest_clap",
+   "judge": "clap",
+   "light": "clap",
+   "trickable": true
+  },
+  "freeze": {
+   "demo": "gest_bear",
+   "judge": "freeze",
+   "light": "ice",
+   "trickable": false,
+   "holdMs": 1000
+  }
+ },
+ "practice": {
+  "win": 3.0,
+  "steps": [
+   [
+    "armsUp",
+    "real"
+   ],
+   [
+    "clap",
+    "trick"
+   ]
+  ]
+ },
+ "rounds": [
+  {
+   "n": 1,
+   "intro": "tr.round1",
+   "win": 2.4,
+   "exactSides": false,
+   "steps": [
+    [
+     "armsUp",
+     "real"
+    ],
+    [
+     "clap",
+     "real"
+    ],
+    [
+     "rightArm",
+     "real"
+    ],
+    [
+     "freeze",
+     "real"
+    ],
+    [
+     "armsUp",
+     "trick"
+    ],
+    [
+     "clap",
+     "real"
+    ]
+   ]
+  },
+  {
+   "n": 2,
+   "intro": "tr.round2",
+   "win": 2.0,
+   "exactSides": false,
+   "steps": [
+    [
+     "clap",
+     "real"
+    ],
+    [
+     "armsUp",
+     "real"
+    ],
+    [
+     "clap",
+     "trick"
+    ],
+    [
+     "leftArm",
+     "real"
+    ],
+    [
+     "rightArm",
+     "real"
+    ],
+    [
+     "armsUp",
+     "trick"
+    ],
+    [
+     "freeze",
+     "real"
+    ],
+    [
+     "clap",
+     "trick"
+    ]
+   ]
+  },
+  {
+   "n": 3,
+   "intro": "tr.round3",
+   "win": 1.6,
+   "exactSides": false,
+   "steps": [
+    [
+     "armsUp",
+     "real"
+    ],
+    [
+     "clap",
+     "real"
+    ],
+    [
+     "armsUp",
+     "real"
+    ],
+    [
+     "armsUp",
+     "trick"
+    ],
+    [
+     "rightArm",
+     "real"
+    ],
+    [
+     "leftArm",
+     "real"
+    ],
+    [
+     "clap",
+     "trick"
+    ],
+    [
+     "clap",
+     "real"
+    ],
+    [
+     "rightArm",
+     "trick"
+    ],
+    [
+     "clap",
+     "trick"
+    ],
+    [
+     "freeze",
+     "real"
+    ]
+   ]
+  }
+ ],
+ "medals": {
+  "bronzeBelow": 0.5,
+  "goldFrom": 0.8
+ },
+ "tune": {
+  "_note": "Fractions of the CHILD'S OWN range (still level → moving level from the practice). Set by harness runs (still kid vs moving kid) — the CLI replaces these with the values that separate them, and logs old→new with the numbers.",
+  "moveFrac": 0.3,
+  "freezeFrac": 0.15,
+  "reachFrac": 0.5,
+  "reachFloorSW": 0.15,
+  "clapCloseFrac": 0.45,
+  "clapOpenFrac": 0.85,
+  "settleMaxMs": 1000,
+  "trickIgnoreMs": 300,
+  "gotchaHoldMs": 250,
+  "hitHoldMs": 200,
+  "stillSeconds": 2.0,
+  "provisionalMoveMult": 10,
+  "moveFloorMult": 3,
+  "jumpRejectSW": 0.8,
+  "nominalFps": 15,
+  "_qaNote": "provisionalMoveMult/moveFloorMult are QA Q4. When the practice arm-up is missed there is no measured moving level, so the still level is multiplied to invent one. At the old x4 the trick threshold landed at k~1.9 x the child's stillness, and the architect's simulation showed a PERFECTLY STILL child getting a false GOTCHA in 12% of trick windows with 1% keypoint flips, 25% with 3% flips, and 13% when fps dropped 15->8 - the game punishing the child for listening. x10 lands at k~3.7 (0% false GOTCHA in every simulated condition) and moveFloorMult is a hard floor so the threshold can never sit below 3x stillness however the arithmetic falls out. jumpRejectSW is Q6 (a one-frame wrist teleport further than 0.8 shoulder-widths is a detection glitch, not movement). nominalFps converts the pre-calibration provisional thresholds into the per-second units Q5 introduced."
+ },
+ "adaptive": {
+  "missesForTogether": 3,
+  "togetherWindowMult": 1.5,
+  "gotchasForCoach": 2,
+  "round2TricksIfCaught": 2,
+  "effortStarRound": 1
+ },
+ "presence": {
+  "lostPauseMs": 1500,
+  "returnHoldMs": 800,
+  "lightHintAfterMs": 8000,
+  "maxWaitMs": 12000,
+  "_qaNote": "maxWaitMs added 2026-09-26 (QA Q2 follow-up): the presence gate had no escape. A founder test stuck on 'I can't see your wrists - step back' because the all-six-joints rule demanded more than the judge needs. The gate now asks for both shoulders + one joint per arm, and continues anyway after this many ms - the spec's own rule is that the game is never stuck."
+ },
+ "reconnectGiveUpMs": 20000,
+ "_capNote": "180 -> 210 by the CLI 2026-09-23. Measured from the real captured clips a full game runs 212s worst-case / 188s with fast answers; at 180 the page's own D5 guard truncates round 3, which is the lightning round. The overrun is structural (step counts + window lengths), not fixable in the audio: a 'Nova says X' line is ~2s at a natural pace and the pack's 1.4s target is not sayable. Revert to 180 if the design would rather drop three steps from round 3.",
+ "_bakeNote": "Measured on pod 7b5c2clec7ih8w 2026-09-23, not assumed. Every bake is 121 frames = 4.84s @25fps. The gesture peaks at: star 0.72s, clap 2.08s, lefthand 2.48s, righthand 2.64s, bear 3.84s. The pack's 1200-1400ms would have swapped her back to the talk body BEFORE the gesture happened in four of the five — the child would see her twitch and reset. These values are peak+250ms so she is still holding the pose while he copies it. Consequence: a demo now overlaps the response window (bear especially), which the design did not anticipate - the honest fix is faster source clips, re-baked.",
+ "_peakNote": "peakMs = the measured peak of each bake (bakeMs minus the 250ms hold). Added 2026-09-25 for QA Q1: the demo now starts at the line's START and the judge window opens at windowOpensAtPeakFrac x peak, because children copy what they SEE. Before this the window opened at the line's END, which for clap/left/right/bear was 0.9-2.4s BEFORE her arms reached the pose - real commands missed and a late copier on a trick moved after the window had closed and was scored +2 stars for moving. If the gestures are ever re-baked faster, update peakMs and bakeMs together; every peak under 1.2s is the fix at source and takes the game back under the 210s cap.",
+ "_freezeNote": "freezeWindowPadS: QA Q3. Freeze needs holdMs (1.0s) of stillness but the EMA energy takes 0.3-0.5s to settle after a child stops, so round 3's 1.6s window could not physically be satisfied. The freeze window is now at least holdMs + 1.2s regardless of the round."
+}

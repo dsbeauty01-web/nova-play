@@ -1,0 +1,45 @@
+{
+ "_note": "Hebrew lines for a GIRL (?g=f). Same ids as lines-en.json. Identical to lines-he-m.json except where Hebrew is gendered: imperatives (בואי/תחזרי/תקפיאי/תקשיבי/תעמדי), the את pronoun that forces the feminine 2nd-person past pronunciation, and אלופת / שחקנית / מדהימה. The COMMANDS are byte-identical to the boy file on purpose — a shouted order in a kids' game carries no gender, and keeping them identical means both children hear exactly the same command timing.",
+
+ "cmd.armsUp.real": "נובה אומרת… ידיים למעלה!",
+ "cmd.armsUp.bare": "ידיים למעלה!",
+ "cmd.leftArm.real": "נובה אומרת… יד שמאל למעלה!",
+ "cmd.leftArm.bare": "יד שמאל למעלה!",
+ "cmd.rightArm.real": "נובה אומרת… יד ימין למעלה!",
+ "cmd.rightArm.bare": "יד ימין למעלה!",
+ "cmd.clap.real": "נובה אומרת… כפיים!",
+ "cmd.clap.bare": "כפיים!",
+ "cmd.freeze.real": "נובה אומרת… לקפוא כמו פסל!",
+
+ "practice.intro": "בואי נתאמן!",
+ "practice.yes": "כן! בדיוק ככה!",
+ "practice.retry": "ידיים למעלה — כמוני!",
+ "practice.listen": "עכשיו תקשיבי…",
+ "practice.caught": "חיחי! לא אמרתי נובה אומרת! זה התרגיל!",
+ "practice.held": "ואו, את הקשבת! תפסת אותי!",
+
+ "fb.yes": "יש!",
+ "fb.nice": "יפה!",
+ "fb.held": "את לא זזת!",
+ "fb.listened": "את הקשבת!",
+ "fb.gotcha": "תפסתי אותך! חיחי!",
+ "fb.gotcha2": "חיחי — לא אמרתי נובה אומרת!",
+ "fb.super": "אלופת הקשבה!",
+ "fb.statue": "פסל!",
+ "fb.tried": "את ניסית! יפה!",
+ "fb.together": "בואי נעשה ביחד!",
+ "fb.freezeBody": "תקפיאי את הגוף — זזים רק כשאני אומרת נובה אומרת!",
+ "fb.comeback": "לאן הלכת? תחזרי!",
+ "fb.welcome": "הנה את!",
+
+ "tr.round1": "סיבוב ראשון!",
+ "tr.round2": "סיבוב שני — מהר יותר!",
+ "tr.round3": "סיבוב הברק!",
+ "tr.last": "האחרון…",
+
+ "fallback.card1": "מדהים! סיבוב שני!",
+ "fallback.card2": "איזה יופי! סיבוב הברק!",
+ "fallback.end": "איזו שחקנית! נשחק שוב מחר!",
+ "practice.still": "קודם — תעמדי בלי לזוז, כמו פסל!",
+ "fallback.reconnect": "אופס — בואי נסיים ביחד! היית מדהימה!"
+}
