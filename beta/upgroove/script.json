@@ -4,7 +4,7 @@
  "gameBody": "nova_idlegroove_v2",
  "music": {
   "_adapt": "[ADAPT 2026-09-30] Measured off the live Freeze, not guessed — the pack shipped bpm 129 / beatOffsetS 0.0 and both are wrong. animal-freeze.html:350 BPM=129.2, :351 BEAT_OFFSET=0.151s (the analyzer's beat-1 phase); beta/freeze2/script.json already carries the same two numbers. The offset matters most: 0.151s of constant bias is larger than half the ON window (onS 0.13), so with 0.0 almost every bounce would have graded 'near' no matter how well the child danced. Song is 132.33s; round 3 starts at 80s and needs ~13s, inside it.",
-  "song": "/freezegame/animal-freeze-song.mp3", "bpm": 129.2, "beatOffsetS": 0.151, "vol": 0.7
+  "song": "../freezegame/animal-freeze-song.mp3", "bpm": 129.2, "beatOffsetS": 0.151, "vol": 0.7
  },
  "everyBeats": 2,
  "_everyBeats": "bounce on every 2nd beat: at 129 bpm that is one bounce every 0.93s — a comfortable pace for 5-8 year olds",

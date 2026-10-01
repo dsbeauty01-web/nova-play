@@ -4,7 +4,7 @@
  "gameBody": "nova_idlegroove_v2",
  "music": {
   "_adapt": "[ADAPT 2026-09-27 #2] Measured off the live Freeze, not guessed: animal-freeze.html:328 song (made absolute — a relative path from /beta/ resolves to /beta/freezegame/), :350 BPM=129.2, :351 BEAT_OFFSET=0.151s (the analyzer's beat-1 phase), :1077 MUSIC_GAIN 0.6 / BEAT_GAIN 0.85. The bare beat has NO asset: it is synthesized offline in-page (:1109) — see makeBeat() in freeze2.html. Song is 132.33s; the last hold of round 3 ends at 125.97s, inside it.",
-  "song": "/freezegame/animal-freeze-song.mp3",
+  "song": "../freezegame/animal-freeze-song.mp3",
   "bareBeat": "synth:kick+woodblock",
   "bpm": 129.2,
   "beatOffsetS": 0.151,

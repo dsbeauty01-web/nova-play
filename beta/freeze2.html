@@ -89,7 +89,7 @@ $('gateSub').textContent = UI.sub; $('gateMsg').textContent = UI.gate;
 const S = await (await fetch('../beta/freeze2/script.json')).json();
 const LINES = await (await fetch(`../beta/freeze2/lines-${LKEY}.json`)).json();
 let MANIFEST = {}; try { MANIFEST = await (await fetch(`../audio/freeze2/${LKEY}/manifest.json`)).json(); } catch(e){}
-let GESTURES = {}; try { GESTURES = await (await fetch('/data/gestures.json')).json(); } catch(e){ console.warn('[STAGE] no gesture library'); }
+let GESTURES = {}; try { GESTURES = await (await fetch('../data/gestures.json')).json(); } catch(e){ console.warn('[STAGE] no gesture library'); }
 const K = await createKit({ tier:'kids', mirror:true, game:'freeze2', lang:LANG, refCandidates:[] });
 const J = createJudges(S.tune);
 const now = () => performance.now() / 1000;
