@@ -60,7 +60,7 @@ export function note(arg) {
     // only mutes her voice; show tells the brain to start nothing at all for the length of a
     // round — no 13s timer, no transcript turned into a turn, no response created. The FAST
     // pack asks for it because all three were caught leaking into a round on 2026-09-27.
-    if (k === 'show')       { send({ type: 'show', on: !!arg.on }); return; }
+    if (k === 'show')       { send({ type: 'show', on: !!arg.on }); if (NOVA_MODE === 'rounds') herVideo(!arg.on); return; }
     // [ADAPT 2026-09-27 · FREEZE v2] 'tap' = the child answered by tapping instead of speaking.
     // It only satisfies the brain's WAIT LAW (ask-lock); it never makes her say anything. Without
     // it, a greet that ends in a question keeps every later boundary shut for the whole game.
@@ -125,6 +125,13 @@ export function onSpeech({ started, stopped } = {}) {
 }
 
 // ── internals (faithful to beta/freeze.html Live) ────────────────────────────
+/* [TEST LAB 2026-10-01] ?nova=on|off|rounds — her LIVE VIDEO only (her voice is untouched).
+   Decoding her stream halved body-tracking speed in every game (35 → 11 fps). off = never receive it;
+   rounds = stop receiving it while a round runs (the page's 'show' signal) and bring it back for breathers. */
+const NOVA_MODE = (new URLSearchParams(location.search).get('nova') || 'on').toLowerCase();
+let videoPub = null;
+function herVideo(on){ try { videoPub?.setSubscribed?.(!!on); } catch (_) {} window.dispatchEvent(new CustomEvent('nova:video', { detail: { on: !!on, mode: NOVA_MODE } })); }
+
 async function joinLiveKit(onVideo) {
   try {
     const LK = window.LivekitClient || window.LiveKitClient;
@@ -133,6 +140,7 @@ async function joinLiveKit(onVideo) {
     room = new LK.Room({ adaptiveStream: false, dynacast: false });
     room.on(LK.RoomEvent.TrackSubscribed, (track, pub, p) => {
       if (p.identity !== 'nova-avatar') return;
+      if (track.kind === 'video'){ videoPub = pub; if (NOVA_MODE === 'off'){ herVideo(false); return; } }
       if (track.kind === 'video' && onVideo) onVideo(new MediaStream([track.mediaStreamTrack]));
       if (track.kind === 'audio') routeHerAudio(track);
     });
@@ -193,7 +201,9 @@ function connectWS(intro) {
         window.dispatchEvent(new Event('nova:consent'));
       return;
     }
+    if (m.type === 'brain' || m.type === 'brain_error') { window.dispatchEvent(new CustomEvent('nova:brain', { detail: m })); return; }   // [TEST LAB] which voice is live / why she is silent
     if (m.type === 'status') {
+      window.dispatchEvent(new CustomEvent('nova:status', { detail: m }));
       if (m.speaking === true) micGated = true; else if (m.speaking === false) micGated = false;
       if (m.hearing === true) kidSpeech.started(); else if (m.hearing === false) kidSpeech.stopped();
     }

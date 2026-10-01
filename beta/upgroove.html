@@ -38,18 +38,19 @@ button.big{font:800 30px 'Baloo 2';padding:16px 46px;border:0;border-radius:18px
 #okBtn{position:fixed;right:24px;bottom:24px;z-index:95}
 #pause,#exit{position:fixed;top:1.6vh;z-index:60;background:rgba(0,0,0,.45);color:#fff;border:0;border-radius:12px;padding:8px 12px;font-size:18px;cursor:pointer}#pause{right:64px}#exit{right:14px}
 .hidden{display:none!important}
+#finalScore,#cardPts{font-size:clamp(28px,4.6vw,54px)!important;letter-spacing:2px}
 </style></head><body data-phase="intro" data-debug="1">
 <div id="stage">
   <div id="novaWrap"><video id="novaAmbient" autoplay muted playsinline></video><video id="novaMain" autoplay muted playsinline></video></div>
   <div id="camWrap"><video id="usercam" autoplay muted playsinline></video><canvas id="fx"></canvas></div>
 </div>
-<div id="hud"><div id="dots"></div><div class="pill"><span id="pts">0</span></div><div id="streak"></div><div id="score"></div><div id="tag"></div></div>
+<div id="hud"><div id="dots"></div><div class="pill"><span id="pts"></span></div><div id="streak"></div><div id="score"></div><div id="tag"></div></div>
 <div id="cap"></div><div id="dbg"></div><div id="dbgGame"></div>
 <button id="pause">⏸</button><button id="exit">✕</button>
 <div id="gate"><div style="font:800 48px 'Baloo 2'">🎵 Up Groove</div><div id="gateSub" style="opacity:.85;margin-top:6px;max-width:560px;font-size:20px"></div><button id="start" class="big">▶</button></div>
 <div id="gateArms" class="hidden"><div id="gateMsg"></div><div id="ring"></div></div>
 <div id="card" class="hidden"><h2 id="cardPts"></h2><p id="cardLine"></p></div>
-<div id="scorecard"><div id="medal"></div><h1 id="finalScore">0</h1><p id="finalLine"></p><button id="again" class="big">↻</button></div>
+<div id="scorecard"><div id="medal"></div><h1 id="finalScore"></h1><p id="finalLine"></p><button id="again" class="big">↻</button></div>
 <div id="banner" class="hidden"></div>
 <script type="module">
 /* UP GROOVE — bounce on the big beat.
@@ -140,7 +141,10 @@ K.onKid = (out, k) => { if (!k) return; last = k; const t = now(); lights.feed(k
 
 // ───────── score + reactions ─────────
 let pts = 0, streak = 0, bestStreak = 0, onN = 0, nearN = 0, total = 0, sinceLine = 0; const roundLog = [];
-function addPts(n){ pts += n; $('pts').textContent = pts; }
+function addPts(n){ pts += n; }                                                     // [NO NUMBERS 2026-10-01] points stay internal; the child sees stars
+const starRow = (n, total = n) => '⭐'.repeat(Math.min(n, 12)) + '☆'.repeat(Math.max(0, Math.min(total, 12) - Math.min(n, 12)));
+const starScaled = (n, total, slots = 10) => { const f = total ? Math.round(slots * n / total) : 0; return '⭐'.repeat(f) + '☆'.repeat(slots - f); };
+function drawStars(){ const n = round ? round.on : 0; $('pts').textContent = '⭐'.repeat(Math.min(n, 12)); }
 /* UPGROOVE.md §6 calibration: every graded bounce's distance from its beat, so the mean is readable
    without a console. A positive mean = the pipeline reports bounces LATE ⇒ raise latencyS by that much. */
 const OFF = [];
@@ -149,11 +153,11 @@ function onHit(g, hit){
   if (round.graded.has(g.beat)) return; round.graded.add(g.beat);                        // one grade per beat
   OFF.push(g.offMs); round.off.push(g.offMs);
   moves.result('groove.bounce', g.grade === 'on' ? 'ok' : g.grade === 'near' ? 'near' : 'miss', g);
-  if (g.grade === 'on'){ onN++; round.on++; streak++; bestStreak = Math.max(bestStreak, streak); addPts(S.points.on * (streak >= S.points.streakFrom ? S.points.streakMult : 1)); sinceLine++;
+  if (g.grade === 'on'){ onN++; round.on++; streak++; bestStreak = Math.max(bestStreak, streak); addPts(S.points.on * (streak >= S.points.streakFrom ? S.points.streakMult : 1)); sinceLine++; drawStars();
     if (streak === S.praise.streakAt) play('fb.streak'); else if (sinceLine >= S.praise.every){ sinceLine = 0; play(Math.random() < .5 ? 'fb.yes' : 'fb.groovy'); } }
   else if (g.grade === 'near'){ nearN++; round.near++; streak = 0; addPts(S.points.near); }
   else { streak = 0; }
-  $('streak').textContent = streak >= 2 ? `🔥x${streak}` : '';
+  $('streak').textContent = streak >= 3 ? '🔥' : '';
   stage.event('bounce', { beat: g.beat, grade: g.grade, offMs: g.offMs }, { key: 'bounce', conf: g.grade === 'on' ? 0.9 : 0.6 });
   dbgNote(`beat ${g.beat} ${g.grade} ${g.offMs}ms dip ${hit.dip}`);
 }
@@ -183,6 +187,7 @@ async function playRound(R, idx){
   const period = beat * S.everyBeats, lead = (R.watchBeats || 0) * beat + period;     // first target after the watch beats
   const firstAC = t0 + lead;
   round = { n: R.bounces, period, firstAC, get firstPerf(){ return acToPerf(this.firstAC) + outLat(); }, graded: new Set(), on: 0, near: 0, off: [], R: R.n };   // recomputed each use → survives pause
+  drawStars();                                                               // a fresh round starts with an empty star row
   moves.cue('groove.bounce', { nextBeatAt: t => { const k = Math.ceil((t - round.firstPerf - 0.05) / period); if (k >= round.n) return null; return round.firstPerf + Math.max(0, k) * period; },
                                lead: S.lights.ringLeadS });
   if (R.watchBeats){ play('intro.watch'); setTimeout(() => play('go.join'), Math.max(0, (lead - 1.4)) * 1000); }
@@ -197,7 +202,7 @@ async function playRound(R, idx){
 
 async function breather(rs, idx){
   onstage('between'); try { K.bridge?.setBody?.(S.talkBody); } catch(e){}
-  $('cardPts').textContent = `🎵 ${rs.on}/${rs.of}`; $('cardLine').textContent = UI.on; $('card').classList.remove('hidden');
+  $('cardPts').textContent = starRow(rs.on, rs.of) || '✨'; $('cardLine').textContent = '🎵'; $('card').classList.remove('hidden');
   const r = await stage.requestSpeak(`Round ${rs.n} of Up Groove just ended. Real facts: ${rs.on} of ${rs.of} bounces on the beat, ${rs.near} close. Say ONE excited line to the child by name (max 10 words), then stop. Never negative.`, { fallbackClip: idx === 0 ? 'fallback.card1' : 'fallback.card2' });
   await herTurnEnds(r);                                                      // never start the music over her voice
   await sleep(1200); $('card').classList.add('hidden');
@@ -210,8 +215,8 @@ async function herTurnEnds(r, maxMs = 12000){                              // 's
 async function ending(){
   onstage('ending'); try { K.bridge?.setBody?.(S.talkBody); } catch(e){}
   const pct = onN / Math.max(1, total), medal = pct >= S.medals.goldFrom ? '🥇' : pct >= S.medals.silverFrom ? '🥈' : '🥉';
-  $('medal').textContent = medal; $('finalScore').textContent = pts; $('finalLine').textContent = `🎵 ${onN}/${total} ${UI.on} · 🔥x${bestStreak}`; $('scorecard').style.display = 'flex';
-  await stage.requestSpeak(`Up Groove is over. Real facts: ${pts} points, medal ${medal}, ${onN} of ${total} bounces on the beat, best streak ${bestStreak}. Celebrate with the child by name using ONLY these facts, ask "Did you have fun?" and wait.`, { fallbackClip: 'fallback.end', maxWaitMs: 4000 });
+  $('medal').textContent = medal; $('finalScore').textContent = starScaled(onN, total); $('finalLine').textContent = '🎵 ' + UI.on + (bestStreak >= 3 ? ' 🔥' : ''); $('scorecard').style.display = 'flex';
+  await stage.requestSpeak(`Up Groove is over. Real facts: medal ${medal}, ${onN} of ${total} bounces on the beat, best streak ${bestStreak}. Celebrate with the child by name using ONLY these facts, ask "Did you have fun?" and wait.`, { fallbackClip: 'fallback.end', maxWaitMs: 4000 });
   K.pulse({ game:'upgroove', pts, onN, nearN, total, bestStreak, rounds: roundLog, seconds: Math.round(now() - T0) });
 }
 

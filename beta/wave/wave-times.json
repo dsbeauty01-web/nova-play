@@ -1,0 +1,13 @@
+{
+ "clip": "wave-ref.mp4",
+ "duration": 28.54,
+ "measuredAt": "2026-10-01T09:24:23.666Z",
+ "fps": 36,
+ "waves": [
+  {
+   "t": 7.09,
+   "arm": "R",
+   "ms": 900
+  }
+ ]
+}

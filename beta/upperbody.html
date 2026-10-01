@@ -29,17 +29,18 @@ body[data-phase=intro] #camWrap,body[data-phase=between] #camWrap,body[data-phas
 #scorecard{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(26,15,46,.9);z-index:95;font-family:'Baloo 2'}
 #scorecard h1{font-size:64px;color:var(--amber);margin:0}#scorecard p{font-size:24px;margin:8px 0}#scorecard button{font:800 24px 'Baloo 2';padding:14px 36px;border:0;border-radius:16px;background:var(--amber);color:var(--ink);margin-top:20px;cursor:pointer}
 .hidden{display:none!important}
+#score{letter-spacing:2px;font-size:34px!important}#finalScore{font-size:clamp(28px,4.6vw,54px)!important;letter-spacing:2px}
 </style></head><body data-phase="intro">
 <div id="stage">
   <div id="refWrap"><video id="refAmbient" muted playsinline loop></video><video id="refVid" playsinline preload="auto"></video><canvas id="fxRef"></canvas><div class="tagc">NOVA — copy the torso slides · hips frozen</div></div>
   <div id="camWrap"><video id="usercam" autoplay muted playsinline></video><canvas id="fx"></canvas><div class="tagc">YOU</div></div>
-  <div id="hud"><div id="dots"></div><div id="score">0</div><div id="tag">UPPER BODY</div></div>
+  <div id="hud"><div id="dots"></div><div id="score"></div><div id="tag">UPPER BODY</div></div>
   <div id="cap"></div><div id="dbg"></div>
   <div id="gate"><div style="font:800 34px 'Baloo 2'">Upper Body Isolation</div><div style="opacity:.8;margin-top:6px">hands on your waist — the torso slides, the hips freeze</div><button id="start">▶ Start</button></div>
   <div id="gateArms" class="hidden"><div style="font:800 30px 'Baloo 2'">Step back — I need to see your arms and hips</div><div id="ring"></div></div>
   <div id="banner" class="hidden"></div>
   <div id="card" class="hidden"><h2 id="cardTitle"></h2><p id="cardLine"></p><button id="cardBtn">Ready</button></div>
-  <div id="scorecard"><h1 id="finalScore">0</h1><p id="finalLine"></p><button id="again">PLAY AGAIN</button></div>
+  <div id="scorecard"><h1 id="finalScore"></h1><p id="finalLine"></p><button id="again">PLAY AGAIN</button></div>
 </div>
 <script type="module">
 /* UPPER BODY — adult tier · video-led (her 38s routine) · rib slide with true isolation · hoop lights · 4 rounds (slow, slow, fast, fast) */
@@ -82,7 +83,7 @@ function hoopCue(dir, winMs, leadMs){ OPEN = 'upper.slide'; moves.cue(OPEN); }
 function hoopHit(quality, pts){ moves.result('upper.slide', quality === 'wrong' ? 'near' : 'ok', lastSlide); OPEN = null; setTimeout(() => moves.clear('upper.slide'), 700); }
 function flowPulse(){ moves.cue('freeze.dance'); setTimeout(() => moves.clear('freeze.dance'), 650); }   // a soft pulse, never scored
 
-function startRound(i){ round=i; const R=ROUNDS[i]; K.hud.tag(R.label); K.hud.dots(i+1,4);
+function startRound(i){ round=i; const R=ROUNDS[i]; K.hud.tag(R.label); K.hud.dots(i+1,4); drawStars();
   targets = TARGETS.map(x=>({ ...x, hit:false, missed:false, lit:false })); flows = FLOW.map(t=>({t,lit:false})); ti=0; holdWin=null; hits[i]=0; iso[i]=0; wob=0;
   K.refVid.playbackRate=R.rate; K.refVid.currentTime = i===0 ? 0 : DEMO_END; K.setPhase('game'); document.body.dataset.phase='game';
   if (i===0) K.E.startCal();
@@ -100,6 +101,10 @@ K.onClock = (t) => { if (done) return; const R=ROUNDS[round];
   if (holdWin && performance.now()-holdWin.t0 >= 1000){ const held = !holdWin.broke && holdWin.samples>5; if (held){ score+=50; K.flyText('FROZEN!'); K.ding(); } moves.result('freeze.stop', held ? 'ok' : 'miss', null); setTimeout(() => moves.clear('freeze.stop'), 900); holdWin=null; K.refVid.pause(); endRound(); }
   if (K.refVid.ended && !holdWin) endRound(); };
 
+// [NO NUMBERS 2026-10-01] score stays internal (the report); on screen: a star per slide this round, a star row at the end
+const starRow = (n, total = n) => '⭐'.repeat(Math.min(n, 12)) + '☆'.repeat(Math.max(0, Math.min(total, 12) - Math.min(n, 12)));
+const starScaled = (n, total, slots = 10) => { const f = total ? Math.max(0, Math.min(slots, Math.round(slots * n / total))) : 0; return '⭐'.repeat(f) + '☆'.repeat(slots - f); };
+function drawStars(){ K.hud.score('⭐'.repeat(Math.min(hits[round] || 0, 12))); }
 K.onKid = (out, k) => { if (k) lights.feed(k);                                   // feed EVERY frame, open action or not
   if (done || K.phase==='hold' && holdWin){ if(holdWin){ const f=RULES.freeze(K.E,0.12); holdWin.samples++; if(!f.still) holdWin.broke=true; if (k) moves.live('freeze.stop', k); } return; }
   if (K.phase!=='game' || !calDone) return;
@@ -121,22 +126,22 @@ K.onKid = (out, k) => { if (k) lights.feed(k);                                  
   if (R.rate>1){ streak++; if(streak>=3) pts*=2; } else streak=0;
   if (round===3) pts+=5;
   score+=pts; hits[round]++; if(!wrong) side[nxt.dir]++; K.DBG.hits++;
-  hoopHit(r.iso?'iso':wrong?'wrong':'good', pts); if (g==='PERFECT') K.flyText('PERFECT'); K.tick(streak); K.hud.score(score);
+  hoopHit(r.iso?'iso':wrong?'wrong':'good', pts); if (g==='PERFECT') K.flyText('PERFECT'); K.tick(streak); drawStars();
   K.note(`ub_hit round=${round+1} dir=${nxt.dir} grade=${g} iso=${!!r.iso} wrong=${wrong} streak=${streak}`); };
 
 function endRound(){ if (done) return; const R=ROUNDS[round], h=hits[round]||0, v = h>=8?'NAILED':h>=5?'GOOD':'TRIED';
-  if (v==='NAILED') score+=30; K.hud.score(score);
+  if (v==='NAILED') score+=30;
   if (round<3){ K.setPhase('between'); document.body.dataset.phase='between';
     const weak = side.R<side.L ? 'right' : 'left';
-    $('cardTitle').textContent=`${v} · ${h}/10`; $('cardLine').textContent = `${iso[round]||0} true isolations. Next round: reach the light further on the ${weak}.`;
-    $('cardBtn').textContent = `Ready for round ${round+2}`; $('card').classList.remove('hidden');
-    K.say(`${v}. ${h} of ten. Reach further on the ${weak} next round. Ready?`);
+    $('cardTitle').textContent=`${v} ${starRow(h, 10)}`; $('cardLine').textContent = `${'✨'.repeat(Math.min(iso[round]||0, 8))} Next round: reach the light further on the ${weak}.`;
+    $('cardBtn').textContent = 'Next round ▶'; $('card').classList.remove('hidden');
+    K.say(`${v}! Reach further on the ${weak} next round. Ready?`);
     $('cardBtn').onclick = () => { $('card').classList.add('hidden'); startRound(round+1); };
   } else { done=true; K.stop(); K.setPhase('ending'); document.body.dataset.phase='ending';
     const total = Object.values(hits).reduce((a,b)=>a+b,0), allNailed = [0,1,2,3].every(i=>(hits[i]||0)>=8); if (allNailed) score+=100;
     const weak = side.R<side.L ? 'right' : 'left';
-    K.scorecard(score, `${total} slides · ${Object.values(iso).reduce((a,b)=>a+b,0)} true isolations · next time lead the ${weak} side from the ribs, not the shoulders.`);
-    K.say(`${score} points. Lead the ${weak} side from the ribs next time. Good work.`);
+    K.scorecard(starScaled(total, 40), `Next time lead the ${weak} side from the ribs, not the shoulders.`);
+    K.say(`Good work! Lead the ${weak} side from the ribs next time.`);
     K.pulse({ score, hits, iso, side, allNailed }); } }
 
 $('again').onclick=()=>location.reload();

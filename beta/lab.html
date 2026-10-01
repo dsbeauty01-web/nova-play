@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nova · Test Lab</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#140a26;--card:#1f1338;--card2:#2a1b4a;--ink:#f6f1ff;--mute:#b3a8d6;--gold:#ffc23e;--ok:#7ce8a0;--warn:#ffc85a;--bad:#ff8a6a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Nunito,system-ui,sans-serif}
+.wrap{max-width:1080px;margin:0 auto;padding:22px 18px 40px}
+h1{font:800 34px 'Baloo 2',system-ui;margin:0} .sub{color:var(--mute);margin:2px 0 16px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+.chip{background:var(--card);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:700}
+.chip i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;background:#777;vertical-align:0}
+.panel{background:var(--card);border-radius:18px;padding:16px;margin-bottom:18px}
+.row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.row:last-child{border-bottom:0}
+.lbl{width:150px;font-weight:800;font-size:14px}
+.seg{display:inline-flex;background:var(--card2);border-radius:999px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{border:0;background:transparent;color:var(--ink);font:700 13px Nunito,system-ui;padding:7px 13px;border-radius:999px;cursor:pointer}
+.seg button.on{background:var(--gold);color:#2a1a00}
+.seg button:disabled{opacity:.35;cursor:not-allowed}
+.hint{color:var(--mute);font-size:12.5px}
+.games{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px}
+.g{background:var(--card);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:8px;border:2px solid transparent}
+.g .ic{font-size:34px} .g b{font:800 20px 'Baloo 2',system-ui} .g span{color:var(--mute);font-size:13px;line-height:1.35}
+.g .play{margin-top:auto;border:0;border-radius:14px;background:var(--gold);color:#2a1a00;font:800 18px 'Baloo 2',system-ui;padding:10px;cursor:pointer}
+.g .sec{border:1px solid rgba(255,255,255,.2);background:transparent;color:var(--ink);border-radius:12px;font:700 13px Nunito,system-ui;padding:7px;cursor:pointer}
+.g .st{font-size:12px;font-weight:800}
+.url{font:600 12px ui-monospace,monospace;color:#9f9;background:#0d0718;border-radius:10px;padding:8px 10px;word-break:break-all;margin-top:10px}
+</style></head><body><div class="wrap">
+<h1>🧪 Nova Test Lab</h1>
+<p class="sub">Pick the switches, press a game. Every game opens with a small status panel (tracking speed, which voice is live, what she heard).</p>
+<div class="chips" id="chips"></div>
+
+<div class="panel">
+  <div class="row"><div class="lbl">🧠 Her voice</div><div class="seg" data-k="brain"><button data-v="openai">OpenAI</button><button data-v="eleven">ElevenLabs</button><button data-v="off">Off — recorded lines</button></div><div class="hint" id="brainHint"></div></div>
+  <div class="row"><div class="lbl">🎥 Her live video</div><div class="seg" data-k="nova"><button data-v="on">On</button><button data-v="rounds">Only between rounds</button><button data-v="off">Off</button></div><div class="hint">Off / between rounds = faster tracking</div></div>
+  <div class="row"><div class="lbl">💡 Lights</div><div class="seg" data-k="lights"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+  <div class="row"><div class="lbl">🔎 Body dots</div><div class="seg" data-k="dots"><button data-v="off">Off</button><button data-v="on">On</button></div><div class="hint">On = check the lights sit ON the body</div></div>
+  <div class="row"><div class="lbl">🌍 Language</div><div class="seg" data-k="lang"><button data-v="en">English</button><button data-v="he-m">Hebrew · boy</button><button data-v="he-f">Hebrew · girl</button></div></div>
+  <div class="row"><div class="lbl">🧪 Status panel</div><div class="seg" data-k="panel"><button data-v="on">On</button><button data-v="off">Off</button></div></div>
+</div>
+
+<div class="games" id="games"></div>
+<div class="url" id="url">Press a game to see its exact link.</div>
+</div>
+<script>
+const GAMES = [
+  { id: 'freeze2', ic: '❄️', name: 'Animal Freeze', path: '../beta/freeze2', about: 'Dance, freeze like the animal. Frost, wobble glow, stars.', kit: true },
+  { id: 'novasays', ic: '🗣️', name: 'Nova Says', path: '../beta/novasays-fast', about: 'Do it only when "Nova says". Pose outline on the body.', kit: true },
+  { id: 'upgroove', ic: '🎵', name: 'Up Groove', path: '../beta/upgroove', about: 'Bounce on the big beat. The ring closes on the beat.', kit: true },
+  { id: 'wave', ic: '〰️', name: 'Wave', path: '../beta/wave', about: 'She waves, then it\'s your turn: shoulder, elbow, hand.', kit: false, extra: true },
+  { id: 'upperbody', ic: '🫀', name: 'Upper Body', path: '../beta/upperbody', about: 'Slide the chest, hips stay still.', kit: true },
+  { id: 'livefreeze', ic: '✅', name: 'Freeze (live, certified)', path: '/freeze', about: 'The certified game on main — for comparison. Old look.', kit: false, plain: true },
+];
+const DEF = { brain: 'openai', nova: 'on', lights: 'on', dots: 'off', lang: 'en', panel: 'on', turns: 'on' };
+let S = Object.assign({}, DEF); try { Object.assign(S, JSON.parse(localStorage.getItem('nova-lab') || '{}')); } catch (e) {}
+const save = () => { try { localStorage.setItem('nova-lab', JSON.stringify(S)); } catch (e) {} };
+
+function link(g, extra = {}){
+  const q = new URLSearchParams();
+  const [lang, gen] = S.lang.split('-'); q.set('lang', lang); if (gen) q.set('g', gen);
+  if (!g.plain){
+    if (g.kit){ q.set('brain', S.brain); q.set('nova', S.nova); }
+    if (S.lights === 'off') q.set('lights', '0');
+    if (S.dots === 'on') q.set('dots', '1');
+    if (S.panel === 'on') q.set('lab', '1');
+    if (g.id === 'wave' && S.turns === 'off') q.set('turns', '0');
+  }
+  for (const [k, v] of Object.entries(extra)) q.set(k, v);
+  return location.origin + g.path + '?' + q.toString();
+}
+function drawSegs(){ document.querySelectorAll('.seg').forEach(seg => { const k = seg.dataset.k; seg.querySelectorAll('button').forEach(b => { b.classList.toggle('on', S[k] === b.dataset.v); b.onclick = () => { if (b.disabled) return; S[k] = b.dataset.v; save(); drawSegs(); }; }); }); }
+function drawGames(){
+  document.getElementById('games').innerHTML = GAMES.map(g => `<div class="g" id="g-${g.id}"><div class="ic">${g.ic}</div><b>${g.name}</b><span>${g.about}</span>
+    <div class="st" id="st-${g.id}">checking…</div>
+    ${g.extra ? `<div class="seg" data-k="turns" style="align-self:flex-start"><button data-v="on">Turns</button><button data-v="off">Continuous</button></div>
+      <button class="sec" data-measure="1">📏 Measure her waves (once)</button>` : ''}
+    <button class="play" data-g="${g.id}">▶ Play</button><button class="sec" data-copy="${g.id}">copy link</button></div>`).join('');
+  document.querySelectorAll('[data-g]').forEach(b => b.onclick = () => { const g = GAMES.find(x => x.id === b.dataset.g); const u = link(g); document.getElementById('url').textContent = u; location.href = u; });
+  document.querySelectorAll('[data-copy]').forEach(b => b.onclick = async () => { const u = link(GAMES.find(x => x.id === b.dataset.copy)); document.getElementById('url').textContent = u; try { await navigator.clipboard.writeText(u); b.textContent = 'copied ✓'; } catch (e) { b.textContent = 'see link below'; } setTimeout(() => b.textContent = 'copy link', 1500); });
+  document.querySelectorAll('[data-measure]').forEach(b => b.onclick = () => { const u = link(GAMES.find(x => x.id === 'wave'), { measure: '1' }); document.getElementById('url').textContent = u; location.href = u; });
+  drawSegs();
+}
+const chip = (txt, c) => `<span class="chip"><i style="background:${c}"></i>${txt}</span>`;
+async function status(){
+  const chips = [];
+  try { const r = await fetch('/health', { cache: 'no-store' }); chips.push(chip('pod ' + (r.ok ? 'alive' : 'error ' + r.status), r.ok ? 'var(--ok)' : 'var(--bad)')); } catch (e) { chips.push(chip('pod unreachable', 'var(--bad)')); }
+  let B = null; try { B = await (await fetch('/brains', { cache: 'no-store' })).json(); } catch (e) {}
+  if (B){
+    chips.push(chip('OpenAI key ' + (B.openai ? 'set' : 'missing'), B.openai ? 'var(--ok)' : 'var(--bad)'));
+    chips.push(chip('ElevenLabs agent ' + (B.eleven ? 'set' : 'missing'), B.eleven ? 'var(--ok)' : 'var(--warn)'));
+    const segB = document.querySelector('.seg[data-k="brain"]');
+    segB.querySelector('[data-v="eleven"]').disabled = !B.eleven; segB.querySelector('[data-v="openai"]').disabled = !B.openai;
+    if (S.brain === 'eleven' && !B.eleven) S.brain = B.openai ? 'openai' : 'off';
+    if (S.brain === 'openai' && !B.openai) S.brain = B.eleven ? 'eleven' : 'off';
+    document.getElementById('brainHint').textContent = !B.eleven ? 'ElevenLabs needs ELEVEN_AGENT_ID on the pod' : '';
+    drawSegs();
+  } else chips.push(chip('voice switch not deployed (/brains)', 'var(--warn)'));
+  try { const r = await fetch('../beta/wave/wave-times.json', { cache: 'no-store' }); const ok = r.ok && (await r.json()).waves?.length; chips.push(chip('wave times ' + (ok ? 'measured' : 'not measured'), ok ? 'var(--ok)' : 'var(--warn)')); } catch (e) { chips.push(chip('wave times not measured', 'var(--warn)')); }
+  document.getElementById('chips').innerHTML = chips.join('');
+  for (const g of GAMES){ const el = document.getElementById('st-' + g.id);
+    try { const r = await fetch(g.path, { cache: 'no-store' }); el.textContent = r.ok ? '● ready' : '● not deployed (' + r.status + ')'; el.style.color = r.ok ? 'var(--ok)' : 'var(--bad)'; }
+    catch (e) { el.textContent = '● unreachable'; el.style.color = 'var(--bad)'; } }
+}
+drawGames(); status();
+</script></body></html>

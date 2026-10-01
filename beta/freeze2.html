@@ -48,19 +48,20 @@ button.big{font:800 30px 'Baloo 2';padding:16px 46px;border:0;border-radius:18px
 #okBtn{position:fixed;right:24px;bottom:24px;z-index:95}
 #pause,#exit{position:fixed;top:1.6vh;z-index:60;background:rgba(0,0,0,.45);color:#fff;border:0;border-radius:12px;padding:8px 12px;font-size:18px;cursor:pointer}#pause{right:64px}#exit{right:14px}
 .hidden{display:none!important}
+#finalScore,#cardPts{font-size:clamp(28px,4.6vw,54px)!important;letter-spacing:2px}
 </style></head><body data-phase="intro" data-debug="1">
 <div id="stage">
   <div id="novaWrap"><video id="novaAmbient" autoplay muted playsinline></video><video id="novaMain" autoplay muted playsinline></video><div class="ice"></div></div>
   <div id="camWrap"><video id="usercam" autoplay muted playsinline></video><canvas id="fx"></canvas><div class="ice"></div></div>
 </div>
 <div id="animal"></div><div id="holdbar"></div>
-<div id="hud"><div id="dots"></div><div class="pill"><span id="pts">0</span></div><div id="streak"></div><div id="score"></div><div id="tag"></div></div>
+<div id="hud"><div id="dots"></div><div class="pill"><span id="pts"></span></div><div id="streak"></div><div id="score"></div><div id="tag"></div></div>
 <div id="pop"></div><div id="cap"></div><div id="dbg"></div>
 <button id="pause">⏸</button><button id="exit">✕</button>
 <div id="gate"><div style="font:800 48px 'Baloo 2'">❄ Freeze</div><div id="gateSub" style="opacity:.85;margin-top:6px;max-width:560px;font-size:20px"></div><button id="start" class="big" disabled>▶</button></div>
 <div id="gateArms" class="hidden"><div id="gateMsg"></div><div id="ring"></div></div>
 <div id="card" class="hidden"><h2 id="cardPts"></h2><p id="cardLine"></p></div>
-<div id="scorecard"><div id="medal"></div><h1 id="finalScore">0</h1><p id="finalLine"></p><button id="again" class="big">↻</button></div>
+<div id="scorecard"><div id="medal"></div><h1 id="finalScore"></h1><p id="finalLine"></p><button id="again" class="big">↻</button></div>
 <div id="banner" class="hidden"></div>
 <script type="module">
 /* FREEZE v2 — built on the live-ai-game-architecture skill:
@@ -241,7 +242,9 @@ async function presence(){
 
 // ───────── score ─────────
 let pts = 0, streak = 0, bestStreak = 0, heldN = 0, total = 0, roundLog = [], animalsHeld = {}, maxPts = 0;
-function addPts(n){ pts += n; $('pts').textContent = pts; }
+function addPts(n){ pts += n; }                                                     // [NO NUMBERS 2026-10-01] points stay internal (medal + report); the child sees stars
+const starRow = (n, total = n) => '⭐'.repeat(Math.min(n, 12)) + '☆'.repeat(Math.max(0, Math.min(total, 12) - Math.min(n, 12)));
+function drawStars(){ $('pts').textContent = '⭐'.repeat(Math.min(heldN, 12)) + (heldN > 12 ? '🌟' : ''); }
 function pop(text, color){ const p = $('pop'); p.textContent = text; p.style.color = color; p.classList.remove('show'); void p.offsetWidth; p.classList.add('show'); }
 function showAnimal(a){ $('animal').innerHTML = `<div class="e">${EMO[a]}</div><div class="l">${UI.animals[a]}</div>`; $('animal').classList.add('on'); }
 function hideAnimal(){ $('animal').classList.remove('on'); }
@@ -318,8 +321,8 @@ async function react(r, F, rs){
     // [FIX 2026-09-28] the 🔥 streak text was swallowed into an earlier comment on this line and had
     // stopped updating on a held freeze. (The ding used to ride on K.L.freezeEnd(true); since the
     // freeze.stop recipe took over that picture it is rung explicitly at the verdict instead.)
-    addPts(n); pop(`+${n}`, '#ffc23e');
-    $('streak').textContent = streak >= 2 ? `🔥x${streak}` : '';
+    addPts(n); pop('⭐', '#ffc23e'); drawStars();
+    $('streak').textContent = streak >= 3 ? '🔥' : '';
     /* §6 PRAISE BY CONFIDENCE — this is the false-praise fix made structural. A clip that NAMES the
        animal only plays when the judge saw the whole hold and it was clearly still; a borderline
        hold gets the generic "STATUE!"; a hold the camera barely saw gets NOTHING said about it. */
@@ -327,14 +330,14 @@ async function react(r, F, rs){
       list => list.includes(`held.${F.animal}`) ? `held.${F.animal}` : list[0]);   // the HIGH list is per-animal: pick THIS animal, never a random one
     if (clip) play(clip); else console.log(`[STAGE] praise withheld (conf ${conf.toFixed(2)})`);
   } else if (r === 'almost'){
-    streak = 0; $('streak').textContent = ''; addPts(S.points.almost); sfx('soft'); pop(`+${S.points.almost}`, '#aee8ff');
+    streak = 0; $('streak').textContent = ''; addPts(S.points.almost); sfx('soft'); pop('✨', '#aee8ff');
     play(F.fakeout ? 'fakeout' : 'almost');
   } else if (r === 'missed'){
     streak = 0; $('streak').textContent = ''; play(F.fakeout ? 'fakeout' : 'missed');
   }                                                                                  // noshow: silent — never judged
   /* The fact goes to the stage, not to the brain: time-stamped, confidence-tagged, coalesced under
      one key and expiring after 2.5s, so a line she says later can only describe what was just seen. */
-  stage.event('freeze_result', { n: total, animal: F.animal, result: r, fakeout: !!F.fakeout, points: pts, streak },
+  stage.event('freeze_result', { n: total, animal: F.animal, result: r, fakeout: !!F.fakeout, streak },
               { key: 'freeze', conf });
   console.log(`[STAGE] fact freeze#${total} ${F.animal} → ${r} conf ${conf.toFixed(2)}`);
 }
@@ -342,14 +345,14 @@ async function react(r, F, rs){
 // ───────── breathers + ending (the TALKER) ─────────
 async function breather(rs, idx){
   brainOnstage('between'); stage.phase(`breather${idx+1}`, { live:true }); setBody(S.talkBody); herVideo(true);
-  $('cardPts').textContent = `+${rs.pts}`; $('cardLine').textContent = `❄ ${rs.held}/${rs.held + rs.almost + rs.missed} ${UI.froze}`; $('card').classList.remove('hidden');
+  $('cardPts').textContent = starRow(rs.held, rs.held + rs.almost + rs.missed) || '✨'; $('cardLine').textContent = '❄'; $('card').classList.remove('hidden');
   const best = Object.entries(animalsHeld).sort((a,b) => b[1]-a[1])[0]?.[0];
   /* THE STAGE owns this line now: it waits for 600ms of real quiet (her audio ended AND the child
      isn't mid-sentence), writes the fresh facts in first so the line is true, and if no quiet
      moment appears within 3s it plays the recorded card line instead of speaking late over the kid. */
   const how = await stage.requestSpeak(
     `Round ${rs.n} of the Freeze game just ended. Real facts: held ${rs.held}, almost ${rs.almost}, missed ${rs.missed}` +
-    (best ? `, best animal so far: ${best}` : '') + `, total points ${pts}. Say ONE excited, specific line to the child (max 10 words), then stop. Never negative. Do NOT use a name unless the child told you one.`,
+    (best ? `, best animal so far: ${best}` : '') + `. Say ONE excited, specific line to the child (max 10 words), then stop. Never negative. Do NOT use a name unless the child told you one.`,
     { fallbackClip: idx === 0 ? 'fallback.card1' : 'fallback.card2' });
   console.log(`[STAGE] breather${idx+1} → ${how}`);
   await sleep(S.breather.afterLineMs);                                               // a beat for the child to answer (a real turn → she may answer once)
@@ -359,16 +362,16 @@ async function ending(){
   brainOnstage('ending'); stage.phase('ending', { live:true }); setBody(S.talkBody); herVideo(true);
   const pct = pts / Math.max(1, maxPts), medal = pct >= S.medals.goldFrom ? '🥇' : pct >= S.medals.silverFrom ? '🥈' : '🥉';
   const best = Object.entries(animalsHeld).sort((a,b) => b[1]-a[1])[0]?.[0];
-  $('medal').textContent = medal; $('finalScore').textContent = pts; $('finalLine').textContent = `❄ ${heldN}/${total} ${UI.froze} · 🔥x${bestStreak}`;
+  $('medal').textContent = medal; $('finalScore').textContent = starRow(heldN, total) || '✨'; $('finalLine').textContent = '❄ ' + UI.froze + (bestStreak >= 3 ? ' 🔥' : '');
   $('scorecard').style.display = 'flex';
   const how = await stage.requestSpeak(
-    `The Freeze game is over. Real facts: ${pts} points, medal ${medal}, held ${heldN} of ${total} freezes, best streak ${bestStreak}` +
+    `The Freeze game is over. Real facts: medal ${medal}, held ${heldN} of ${total} freezes, best streak ${bestStreak}` +
     (best ? `, best animal ${best}` : '') + `. Celebrate using ONLY these facts, ask "Did you have fun?" and wait. Do NOT use a name unless the child told you one.`,
     { fallbackClip: 'fallback.end' });
   console.log(`[STAGE] ending → ${how}`);
   /* §7 memory: what she may truthfully remember next time. Device-level, game facts only. */
   if (best) stage.addFact(`best freeze animal: ${best}`);
-  stage.addFact(`last Freeze score: ${pts} (held ${heldN}/${total})`);
+  stage.addFact(`last Freeze: held ${heldN} of ${total}`);
   saveMemory();
   K.pulse({ game:'freeze2', pts, heldN, total, bestStreak, rounds:roundLog, seconds:Math.round(now() - T0), stage:{ spoke: how, facts: stage.facts.length } });
 }

@@ -46,7 +46,20 @@ function ghostPose(name, ls, rs, lh, rh){
   return out;
 }
 
+/* [TEST LAB 2026-10-01] ?lights=0 → every light is a silent no-op (same API — the games can't tell);
+   ?lab=1 → the status panel (fps, brain, mic) loads on top. Both read the page URL, so no game changes. */
+const _LQ = typeof location !== 'undefined' ? new URLSearchParams(location.search) : new URLSearchParams('');
+const LAB = (globalThis.__novaLab ||= { feeds: 0 });
+if (_LQ.get('lab') === '1' && typeof document !== 'undefined') import('../shared/lab-overlay.js').catch(e => console.warn('[LAB] overlay failed', e && e.message));
+function noLights(){
+  const noop = () => {}, api = { feed(){ LAB.feeds++; }, burst: noop, word: noop, speedGlow: noop, waveCue: noop, beatRing: noop, hit: noop, debug: noop, destroy: noop,
+    limbs: noop, pose: noop, meter: noop, ice: noop, rail: noop, flash: noop, sparkle: noop, guide: noop, snow: noop, clearAll: noop,
+    comet: { start: noop, follow: noop, end: noop } };
+  return api;
+}
+
 export function createLights(host, opts = {}){
+  if (_LQ.get('lights') === '0') return noLights();
   /* host = the page's camera overlay canvas (#fx). The kit's own LightEngine already draws on it, so we draw on
      OUR OWN canvas stacked exactly on top of it (same parent, same box) — the two never clear each other. */
   const o = Object.assign({ video: null, mirror: true, debug: false, fit: null }, opts);   // fit: null = read the video's CSS object-fit   // mirror:true = same as the kit (keypoints come un-mirrored)
@@ -90,7 +103,7 @@ export function createLights(host, opts = {}){
   const S = { speed: false, cue: null, comet: { on: false, f: null, tail: [], seen: 0, chain: CHAIN }, parts: [], rings: [], words: [], beat: { on: false, next: null, period: 1, lead: 0.6 }, ripples: [],
     limbs: null, pose: null, meter: null, ice: null, rail: null, halo: 0, guide: null, sparkle: null, flashes: [] };
 
-  function feed(k, t = now()){ for (const n of NAMES){ const p = k?.[n]; if (p) J[n].feed(p.x, p.y, p.vis ?? p.score ?? 1, t); } }
+  function feed(k, t = now()){ LAB.feeds++; for (const n of NAMES){ const p = k?.[n]; if (p) J[n].feed(p.x, p.y, p.vis ?? p.score ?? 1, t); } }
 
   function burst(where, kind = 'gold', n = 70, speed = 420){ const t = now(); const p = typeof where === 'string' ? pos(where, t) : where; if (!p) return;
     const img = kind === 'green' ? SP.green : kind === 'cyan' ? SP.cyan : SP.gold;
@@ -241,7 +254,7 @@ export function createLights(host, opts = {}){
     /* beat: nextBeatAt(tPerfSec) → the next target beat time (performance seconds) or null; lead = seconds the ring takes to close */
     beatRing(on, nextBeatAt = null, lead = 0.6){ S.beat.on = !!on; S.beat.next = nextBeatAt; S.beat.lead = lead; },
     hit(grade){ const c = S.beat.center; const la = pos('lAnkle', now()), ra = pos('rAnkle', now()); const foot = la && ra ? { x: (la.x + ra.x) / 2, y: Math.max(la.y, ra.y) } : c ? { x: c.x, y: c.y + bodyScale(now()) * 2.2 } : null;
-      if (grade === 'on'){ if (c) burst(c, 'gold', 60, 380); if (foot) S.ripples.push({ ...foot, t: 0, gold: true }); if (c) word('+100', c); }
+      if (grade === 'on'){ if (c) burst(c, 'gold', 60, 380); if (foot) S.ripples.push({ ...foot, t: 0, gold: true }); if (c) word('⭐', c); }   // [NO NUMBERS 2026-10-01] kids see a star, never points
       else if (grade === 'near'){ if (foot) S.ripples.push({ ...foot, t: 0, gold: false }); if (c) S.rings.push({ x: c.x, y: c.y, t: 0, kind: 'cyan' }); } },
     /* limbs({ lArm:'good'|'move'|'wrong'|null, rArm, lLeg, rLeg, torso }) — color body parts; limbs(null) clears */
     limbs(state){ S.limbs = state || null; },

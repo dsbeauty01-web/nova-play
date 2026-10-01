@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nova Says</title><!-- v3.2 -->
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<style>
+:root{--gold:#ffc23e;--gold-hot:#ffdf7e;--ink:#2a2140;--stage:#241640;--hoodie:#7c5cbf;--room:#f4d9ea}
+html,body{margin:0;height:100%;background:var(--stage);font-family:Nunito,system-ui;color:#fff;overflow:hidden}
+#stage{position:fixed;inset:0;display:flex;transition:transform .12s}
+#stage.wobble{animation:wob .25s ease-in-out}
+@keyframes wob{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+#novaWrap,#camWrap{position:relative;height:100vh;overflow:hidden;transition:width .5s ease}
+#novaWrap{width:55vw;background:#2b1b4a}#camWrap{width:45vw;background:#120a22}
+body[data-phase=intro] #novaWrap,body[data-phase=between] #novaWrap,body[data-phase=ending] #novaWrap{width:66vw}
+body[data-phase=intro] #camWrap,body[data-phase=between] #camWrap,body[data-phase=ending] #camWrap{width:34vw}
+#novaMain{position:absolute;left:50%;top:0;height:100vh;width:auto;transform:translateX(-50%);z-index:2}
+#novaAmbient{position:absolute;left:50%;top:50%;height:130vh;width:auto;transform:translate(-50%,-50%) scaleX(2.4);filter:blur(30px) saturate(1.1);opacity:.85;z-index:1}
+#usercam{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+#fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6}
+#badge{position:absolute;left:14px;bottom:14px;z-index:8;background:rgba(0,0,0,.5);padding:6px 14px;border-radius:999px;font-weight:800;font-size:15px}
+#hud{position:fixed;top:1.6vh;left:0;right:0;display:flex;gap:18px;justify-content:center;align-items:center;z-index:50;pointer-events:none}
+#jar{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.35);border-radius:999px;padding:6px 18px}
+#jar b{font:800 40px 'Baloo 2';color:var(--gold);text-shadow:0 2px 10px rgba(0,0,0,.4);font-variant-numeric:tabular-nums}
+#jar span{font-size:34px}
+#streak{width:140px;height:12px;border-radius:6px;background:rgba(255,255,255,.18);overflow:hidden}#streak i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ffc23e,#ffdf7e);transition:width .2s}
+#dots i{display:inline-block;width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,.22);margin:0 3px}#dots i.on{background:var(--gold)}
+#tricks{background:rgba(0,0,0,.35);border-radius:999px;padding:6px 14px;font-weight:800}
+#score,#tag{display:none}
+#cap{position:fixed;left:0;right:0;bottom:5vh;text-align:center;z-index:50;font:800 clamp(22px,3.4vw,40px) 'Baloo 2';text-shadow:0 2px 18px rgba(0,0,0,.7)}
+#dbg{position:fixed;left:8px;bottom:8px;z-index:99;font:600 12px monospace;background:rgba(0,0,0,.65);color:#9f9;padding:6px 10px;border-radius:8px;white-space:pre}
+body[data-debug="0"] #dbg{display:none}
+.flystar{position:fixed;z-index:120;font-size:44px;pointer-events:none;transition:transform .6s cubic-bezier(.2,.8,.2,1),opacity .6s}
+#gate,#banner,#gateArms,#card,#scorecard{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(36,22,64,.9);z-index:90;text-align:center;padding:24px}
+#gateArms{background:rgba(36,22,64,.5)}
+#gate button,#card button,#scorecard button,#okBtn{font:800 28px 'Baloo 2';padding:16px 44px;border:0;border-radius:18px;background:var(--gold);color:var(--ink);cursor:pointer;margin-top:18px}
+#banner{background:#3a0d0d;color:#ffb3b3;font-weight:800;font-size:22px}
+#ring{width:120px;height:120px;border-radius:50%;border:6px solid rgba(255,255,255,.25);border-top-color:var(--gold);margin-top:18px}#ring.ok{border-color:#7ddba3}
+#gateMsg{font:800 30px 'Baloo 2'}
+#card h2,#scorecard h1{font-family:'Baloo 2';font-size:64px;margin:0;color:var(--gold)}
+#card p,#scorecard p{font-size:24px;margin:8px 0}
+#medal{font-size:120px;line-height:1}
+#scorecard{display:none}
+#pause,#exit{position:fixed;top:1.6vh;z-index:60;background:rgba(0,0,0,.45);color:#fff;border:0;border-radius:12px;padding:8px 12px;font-size:18px;cursor:pointer}#pause{right:64px}#exit{right:14px}
+.hidden{display:none!important}
+</style></head><body data-phase="intro" data-debug="1">
+<div id="stage">
+  <div id="novaWrap"><video id="novaAmbient" autoplay muted playsinline></video><video id="novaMain" autoplay muted playsinline></video></div>
+  <div id="camWrap"><video id="usercam" autoplay muted playsinline></video><canvas id="fx"></canvas><div id="badge">👂</div></div>
+</div>
+<div id="hud"><div id="dots"></div><div id="jar"><span>⭐</span><b id="stars">0</b></div><div id="streak"><i></i></div><div id="tricks">🎯 0/0</div><div id="score"></div><div id="tag"></div></div>
+<div id="cap"></div><div id="dbg"></div>
+<button id="pause">⏸</button><button id="exit">✕</button>
+<div id="gate"><div style="font:800 44px 'Baloo 2'">Nova Says</div><div id="gateSub" style="opacity:.85;margin-top:6px;max-width:560px;font-size:20px"></div><button id="start">▶</button></div>
+<div id="gateArms" class="hidden"><div id="gateMsg"></div><div id="ring"></div></div>
+<div id="card" class="hidden"><h2 id="cardStars"></h2><p id="cardLine"></p></div>
+<div id="scorecard"><div id="medal"></div><h1 id="finalScore">0</h1><p id="finalLine"></p><button id="again">↻</button></div>
+<div id="banner" class="hidden"></div>
+<!-- [FIX 2026-09-27] Her avatar never appeared: this page was the ONLY Nova page without the
+     LiveKit UMD client. nova-bridge's joinLiveKit() reads window.LivekitClient and, finding
+     nothing, warns to console and RETURNS — so attachNova() resolved, nothing threw, no banner
+     fired, and the stage just stayed empty. Same tag, same pin as nova-commercial.html. -->
+<script src="https://cdn.jsdelivr.net/npm/livekit-client@2.13.3/dist/livekit-client.umd.min.js"></script>
+<script type="module">
+/* NOVA SAYS v3.1 — two engines take turns: LIVE (her brain, V2V, lips) at intro / 2 cards / ending,
+   SHOW (this sequencer: her captured lines + gesture bakes + lights + camera judges) during practice and the 3 rounds.
+   During SHOW the brain is offstage: speak-gate ON, mic closed, only silent remember() facts. Written by the architect. */
+import { createKit, RULES } from '../shared/game-kit.js';
+const $ = id => document.getElementById(id);
+const Q = new URLSearchParams(location.search);
+const LANG = (Q.get('lang') || localStorage.getItem('nova-lang') || 'en') === 'he' ? 'he' : 'en';
+const G = (Q.get('g') || localStorage.getItem('nova-gender') || 'm') === 'f' ? 'f' : 'm';
+const LKEY = LANG === 'he' ? `he-${G}` : 'en';
+if (Q.get('debug') === '0') document.body.dataset.debug = '0';
+if (LANG === 'he'){ $('cap').dir = 'rtl'; $('card').dir = 'rtl'; $('scorecard').dir = 'rtl'; $('gateArms').dir = 'rtl'; }
+const UI = LANG === 'he'
+  ? { sub:'כשנובה אומרת "נובה אומרת" — עושים. כשלא — לא זזים!', gate:'תתרחק קצת — שאראה את הידיים', see:'רואה אותך!', tricks:'תרגילים שתפסת', stars:'כוכבים', again:'עוד פעם', gold:'זהב', silver:'כסף', bronze:'ארד' }
+  : { sub:'When Nova says "Nova says" — do it. If she doesn\'t — don\'t move!', gate:'Step back — show me your arms', see:'I see you!', tricks:'tricks caught', stars:'stars', again:'Again', gold:'Gold', silver:'Silver', bronze:'Bronze' };
+$('gateSub').textContent = UI.sub; $('gateMsg').textContent = UI.gate;
+
+// ───────────────── data ─────────────────
+const S = await (await fetch('../beta/novasays/script.json')).json();
+const LINES = await (await fetch(`../beta/novasays/lines-${LKEY}.json`)).json();
+let MANIFEST = {}; try { MANIFEST = await (await fetch(`../audio/novasays/${LKEY}/manifest.json`)).json(); } catch(e){}
+const K = await createKit({ tier:'kids', mirror:true, game:'novasays', lang:LANG, refCandidates:[] });
+const LIP = Q.get('lip') || S.lipMode;                    // 'engine' = lines through the avatar for lips · 'air' = page playback
+const T0 = performance.now(); const elapsed = () => (performance.now() - T0) / 1000;
+
+// ───────────────── audio: preload every captured line (missing = red banner, never a silent fallback) ─────────────────
+const AC = new (window.AudioContext || window.webkitAudioContext)();
+const CLIPS = {};
+async function preload(){
+  const need = new Set(Object.keys(LINES).filter(k => !k.startsWith('_')));
+  const missing = [];
+  await Promise.all([...need].map(async id => {
+    const files = MANIFEST[id] || [];
+    if (!files.length){ missing.push(id); return; }
+    CLIPS[id] = await Promise.all(files.map(async f => ({ url:`../audio/novasays/${LKEY}/${f}`, buf: await AC.decodeAudioData(await (await fetch(`../audio/novasays/${LKEY}/${f}`)).arrayBuffer()) })));
+  }));
+  if (missing.length) throw new Error('missing clips: ' + missing.join(', '));
+}
+const pick = id => { const t = CLIPS[id]; return t[Math.floor(Math.random() * t.length)]; };
+function playBuf(buf){ return new Promise(res => { const s = AC.createBufferSource(); s.buffer = buf; s.connect(AC.destination); s.onended = res; s.start(); }); }
+function caption(t){ $('cap').textContent = t || ''; }
+/* speakLine: resolves when the line has finished. onLastWord fires ~150ms before the end (the gesture cue). */
+async function speakLine(id, onLastWord){
+  const c = pick(id); caption(LINES[id]); K.bed.duck(true); dbgNote('line ' + id);
+  const lead = Math.max(0, c.buf.duration - 0.15) * 1000;
+  const cue = onLastWord ? setTimeout(onLastWord, lead) : null;
+  /* [QA 2026-09-26] speakClip returns false when the lip-sync path is unavailable — then the page
+     plays the clip itself. She still speaks; only her lips stop moving. A missing engine must never
+     cost a child the line, and before this it cost them the whole game. */
+  let lipped = false;
+  if (LIP === 'engine' && K.bridge?.speakClip){ try { lipped = await K.bridge.speakClip(c.url); } catch(e){ lipped = false; } }
+  if (!lipped) await playBuf(c.buf);
+  if (cue) clearTimeout(cue); if (onLastWord && !cue) onLastWord();
+  K.bed.duck(false); caption('');
+}
+function sfx(kind){ const m = { pop:[880,90], twinkle:[1320,140], boing:[220,220], ding:[1568,180], whoosh:[440,160] }[kind]; if (!m) return;
+  try { const o = AC.createOscillator(), g = AC.createGain(); o.type = kind === 'boing' ? 'triangle' : 'sine'; o.frequency.setValueAtTime(m[0], AC.currentTime);
+    if (kind === 'boing') o.frequency.exponentialRampToValueAtTime(110, AC.currentTime + .22);
+    if (kind === 'whoosh') o.frequency.exponentialRampToValueAtTime(1200, AC.currentTime + .16);
+    g.gain.value = .14; o.connect(g).connect(AC.destination); o.start(); g.gain.exponentialRampToValueAtTime(.0001, AC.currentTime + m[1]/1000); o.stop(AC.currentTime + m[1]/1000); } catch(e){} }
+
+// ───────────────── body ─────────────────
+function setBody(id){ try { K.bridge?.setBody?.(id); } catch(e){} dbgNote('body ' + id); }
+/* [ADAPT 2026-09-23] the swap-back is now cancellable. The pack assumed ~1.3s gestures; the real
+   bakes peak at 0.7-3.8s (measured), so a demo can still be running when the next command fires.
+   Without this guard the previous gesture's timer lands mid-way through the new one and snaps her
+   to the talk body while she is supposed to be demonstrating. */
+let _demoT = null;
+function demo(cmdId){ const c = S.commands[cmdId]; if (_demoT) clearTimeout(_demoT);
+  setBody(c.demo); _demoT = setTimeout(() => { _demoT = null; setBody(S.talkBody); }, S.bakeMs[c.demo] || 1300); }
+/* [QA Q1] The measured peak of each bake (pod 7b5c2clec7ih8w, 2026-09-23) — the moment her arms are
+   actually IN the pose. bakeMs is peak+250ms (how long she holds it); PEAK is when the child can first
+   see what to copy. Script.json owns the numbers; these literals are the fallback if it is older. */
+const PEAK = Object.assign({ gest_star:720, gest_clap:2080, gest_lefthand:2480, gest_righthand:2640, gest_bear:3840 }, S.peakMs || {});
+function badge(t){ $('badge').textContent = t; }
+
+// ───────────────── the brain's two states ─────────────────
+// [ADAPT] map these to the rt_lk PRODUCER-SILENT messages: speak-gate on/off, mic gating, silent remember, section-end boundary + speak_now.
+function brainOffstage(){ try { K.bridge?.note?.({ kind:'speak-gate', on:true }); K.bridge?.mic?.(false); } catch(e){} K.setPhase('game'); document.body.dataset.phase = 'game'; badge('👀'); }
+function brainOnstage(phase){ try { K.bridge?.mic?.(true); } catch(e){} K.setPhase(phase); document.body.dataset.phase = phase; badge('💬'); }
+function remember(text){ try { K.bridge?.note?.({ kind:'remember', text }); } catch(e){} dbgNote('remember ' + text.slice(0,40)); }
+/* handoff: ONE speak_now at a boundary. true if she spoke; false if she did not start within the timeout (→ fallback clip). */
+function brainSpeak(text){
+  return new Promise(res => {
+    if (!K.bridge?.note || !K.bridge?.onHerAudio) return res(false);
+    let started = false, done = false; const finish = v => { if (!done){ done = true; res(v); } };
+    try { K.bridge.onHerAudio({ playing: () => { started = true; }, ended: () => { if (started) finish(true); } }); } catch(e){ return res(false); }
+    K.bridge.note({ kind:'section-end', speak:true, text });
+    setTimeout(() => { if (!started) finish(false); }, S.handoffStartTimeoutMs);
+    setTimeout(() => finish(started), S.handoffMaxMs);
+  });
+}
+async function handoff(phase, factsText, fallbackId){
+  K.bed.stop(); brainOnstage(phase); try { K.bridge?.note?.({ kind:'speak-gate', on:false }); } catch(e){}
+  setBody(S.talkBody);
+  const spoke = await brainSpeak(factsText);
+  if (!spoke){ dbgNote('handoff fallback'); await speakLine(fallbackId); }
+}
+
+// ───────────────── detection: calibration on THIS child + the two judges ─────────────────
+const TU = S.tune;
+let last = null, prev = null, energy = 0, win = null;
+const CAL = { still:null, move:null, reach:null, rest:null, stillS:[], moveS:[], reachS:[], restS:[] };
+/* [QA Q5] energy is displacement per SECOND, not per frame. Per-frame energy scales with 1/fps —
+   the same arm raise measures 0.27 at 8fps and 0.12 at 30fps — so a child calibrated at one frame
+   rate and judged at another was measured against the wrong ruler. The provisional (pre-calibration)
+   thresholds below are the old per-frame numbers multiplied by tune.nominalFps so they mean the same
+   thing in the new units; they are only ever used for the practice arm-up, which is never punished. */
+const NFPS = TU.nominalFps || 15;
+let thr = { move:0.012 * NFPS, freeze:0.006 * NFPS, reach:TU.reachFloorSW, clapClose:0.35, clapOpen:0.6 };   // provisional until calibrated (logged)
+const J = ['lShoulder','rShoulder','lElbow','rElbow','lWrist','rWrist'];
+const vis = (k, j) => k?.[j]?.vis > 0.4;
+function sw(k){ return (vis(k,'lShoulder') && vis(k,'rShoulder')) ? Math.max(0.05, Math.abs(k.lShoulder.x - k.rShoulder.x)) : 0.2; }
+function wristDist(k){ return (vis(k,'lWrist') && vis(k,'rWrist')) ? Math.hypot(k.lWrist.x - k.rWrist.x, k.lWrist.y - k.rWrist.y) / sw(k) : null; }
+function reach(k){ let r = -9; for (const [w,sh] of [['lWrist','lShoulder'],['rWrist','rShoulder']]) if (vis(k,w) && vis(k,sh)) r = Math.max(r, (k[sh].y - k[w].y) / sw(k)); return r; }
+let sampling = null;                                    // 'still' | 'move' while calibrating
+let lastT = performance.now();
+K.onKid = (out, k) => {
+  if (!k) return;
+  const nowT = performance.now(), dt = Math.max(0.016, (nowT - lastT) / 1000); lastT = nowT;   // [QA Q5]
+  if (prev){ let sum = 0, n = 0; for (const j of J){ if (vis(k,j) && vis(prev,j)){
+      const jump = Math.hypot(k[j].x - prev[j].x, k[j].y - prev[j].y) / sw(k);
+      if (jump > (TU.jumpRejectSW ?? 0.8)) continue;                                            // [QA Q6] one-frame teleport = detection glitch
+      sum += Math.hypot(k[j].x - prev[j].x, k[j].y - prev[j].y); n++; } }
+    if (n >= 4){ energy = energy * 0.6 + (((sum / n) / sw(k)) / dt) * 0.4; } }                  // [QA Q5] per second
+  prev = k; last = k;
+  if (sampling === 'still'){ CAL.stillS.push(energy); const d = wristDist(k); if (d != null) CAL.restS.push(d); }
+  if (sampling === 'move'){ CAL.moveS.push(energy); CAL.reachS.push(reach(k)); }
+  if (win) judgeFrame(k);
+  dbg();
+};
+const med = a => { const s = [...a].sort((x,y) => x-y); return s.length ? s[Math.floor(s.length/2)] : null; };
+const p90 = a => { const s = [...a].sort((x,y) => x-y); return s.length ? s[Math.floor(s.length*0.9)] : null; };
+function finishCalibration(){
+  CAL.still = med(CAL.stillS) ?? 0.004 * NFPS; CAL.rest = med(CAL.restS) ?? 1.0;
+  CAL.move  = p90(CAL.moveS); CAL.reach = p90(CAL.reachS);
+  /* [QA Q4] The practice arm-up was missed, so there is no measured moving level and one has to be
+     invented from the still level. The old x4 put the trick threshold at k~1.9 x stillness, where the
+     architect's simulation shows a PERFECTLY STILL child false-GOTCHA'd in 12-25% of trick windows
+     (keypoint flips) and 13% on an fps drop. x10 lands at k~3.7: 0% in every simulated condition. */
+  CAL.provisional = (CAL.move == null || CAL.move <= CAL.still * 1.5);
+  if (CAL.provisional) CAL.move = CAL.still * (TU.provisionalMoveMult ?? 10);
+  if (CAL.reach == null || CAL.reach < 0.3) CAL.reach = 0.6;
+  const span = CAL.move - CAL.still;
+  thr = { move:   CAL.still + TU.moveFrac   * span,
+          freeze: CAL.still + TU.freezeFrac * span,
+          reach:  Math.max(TU.reachFloorSW, TU.reachFrac * CAL.reach),
+          clapClose: TU.clapCloseFrac * CAL.rest, clapOpen: TU.clapOpenFrac * CAL.rest };
+  thr.move = Math.max(thr.move, CAL.still * (TU.moveFloorMult ?? 3));                   // [QA Q4] hard floor: never below 3x this child's stillness
+  dbgNote('[CAL] ' + JSON.stringify({ still:+CAL.still.toFixed(4), move:+CAL.move.toFixed(4), k:+(thr.move/Math.max(1e-6,CAL.still)).toFixed(2), provisional:CAL.provisional, reach:+CAL.reach.toFixed(2), rest:+CAL.rest.toFixed(2), thr:Object.fromEntries(Object.entries(thr).map(([a,b]) => [a,+b.toFixed(4)])) }));
+}
+/* [QA Q2] A child close to the camera who raises his arms pushes his WRISTS out of the top of the
+   frame. The old rule required a visible wrist, and K.armsVisible (all six joints) voided the whole
+   window — so "arms up", done correctly and enthusiastically, scored nothing. The judge now degrades
+   instead of failing: wrist if we have it, else the elbow at half the reach, else the last verdict
+   from before the wrist left the frame. A window is voided only when the SHOULDERS are lost, which
+   is the real "the child is gone" signal. */
+const bodyVisible = k => vis(k,'lShoulder') && vis(k,'rShoulder');
+const lastWristAbove = { L:false, R:false };
+function armUp(k, side){
+  const w = side === 'L' ? 'lWrist' : 'rWrist', e = side === 'L' ? 'lElbow' : 'rElbow', s = side === 'L' ? 'lShoulder' : 'rShoulder';
+  if (!vis(k,s)) return false;
+  if (vis(k,w)){ const up = (k[s].y - k[w].y) / sw(k) > thr.reach; lastWristAbove[side] = up; return up; }
+  if (vis(k,e)) return (k[s].y - k[e].y) / sw(k) > thr.reach * 0.5;                  // wrist out of frame above: the elbow is enough
+  return lastWristAbove[side];                                                        // wrist just left the top edge: keep the last verdict
+}
+let clapOpenT = 0;
+function realRule(judge, k){
+  switch (judge){
+    case 'armsUp':   return armUp(k,'L') && armUp(k,'R');
+    case 'leftArm':
+    case 'rightArm': return armUp(k,'L') || armUp(k,'R');                       // A4: either arm counts, every round
+    case 'clap': { const d = wristDist(k), now = performance.now(); if (d == null) return false;
+      if (d > thr.clapOpen) clapOpenT = now;
+      const fused = RULES.clap ? !!RULES.clap(K.E, null)?.hit : false;
+      return (d < thr.clapClose && now - clapOpenT < 700) || fused; }
+    case 'freeze':   return energy < thr.freeze;
+  }
+  return false;
+}
+/* a window resolves with: 'hit' | 'effort' | 'miss' | 'gotcha' | 'held' | 'void' */
+function openWindow(cmdId, kind, secs, opts = {}){
+  return new Promise(res => {
+    const c = S.commands[cmdId], now = performance.now();
+    win = { cmdId, kind, judge:c.judge, t0:now, t1:now + secs*1000, holdMs:c.holdMs||0, since:null, moveSince:null, effortSince:null, effort:false,
+            ignoreUntil: kind === 'trick' ? now + TU.trickIgnoreMs : now, effortOK: !!opts.effortOK, lostSince:null, res };
+    dbgNote(`window ${kind} ${cmdId} ${secs.toFixed(1)}s`);
+  });
+}
+function closeWindow(result){ if (!win) return; const r = win.res; win = null; r(result); }
+function judgeFrame(k){
+  const w = win, now = performance.now();
+  if (!bodyVisible(k)){ w.lostSince ??= now; if (now - w.lostSince > S.presence.lostPauseMs) return closeWindow('void'); return; }   // C1 + [QA Q2]
+  w.lostSince = null;
+  if (w.kind === 'real'){
+    const ok = realRule(w.judge, k);
+    if (w.judge === 'freeze'){ if (ok){ w.since ??= now; if (now - w.since >= w.holdMs) return closeWindow('hit'); } else w.since = null; }
+    else if (ok){ w.since ??= now; if (now - w.since >= TU.hitHoldMs) return closeWindow('hit'); } else w.since = null;
+    if (w.effortOK && energy > thr.move){ w.effortSince ??= now; if (now - w.effortSince >= TU.gotchaHoldMs) w.effort = true; } else w.effortSince = null;   // A3
+  } else if (now >= w.ignoreUntil){                                            // TRICK: did you move AT ALL? (A2: first 300ms ignored)
+    if (energy > thr.move){ w.moveSince ??= now; if (now - w.moveSince >= TU.gotchaHoldMs) return closeWindow('gotcha'); } else w.moveSince = null;
+  }
+  if (now >= w.t1) closeWindow(w.kind === 'real' ? (w.effort ? 'effort' : 'miss') : 'held');
+}
+/* [QA Q7] This safety net only fires when frames STOPPED arriving (judgeFrame closes every healthy
+   window at t1). It used to resolve a stalled trick as 'held' — +2 stars for a child nobody was
+   watching — and a stalled real command as 'miss', punishing a child nobody was watching. If there
+   were no frames there was no evidence either way, so the honest result is 'void': no stars, no gotcha. */
+setInterval(() => { if (win && !paused && performance.now() >= win.t1 + 400) closeWindow('void'); }, 200);
+async function settle(){ const t = performance.now(); while (energy > thr.move && performance.now() - t < TU.settleMaxMs) await sleep(50); }   // A2
+
+// ───────────────── pause / visibility / reconnect ─────────────────
+let paused = false, endingNow = false;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function whilePaused(){ while (paused) await sleep(150); }
+function setPaused(v, why){ paused = v; if (v){ AC.suspend(); K.bed.duck(true); } else { AC.resume(); K.bed.duck(false); } dbgNote((v ? 'PAUSE ' : 'RESUME ') + (why||'')); }
+document.addEventListener('visibilitychange', () => setPaused(document.hidden, 'tab'));                                      // D3
+function watchNova(){                                                                                                           // D2
+  let downSince = null;
+  setInterval(() => {
+    const tr = $('novaMain').srcObject?.getVideoTracks?.()[0];
+    const down = !tr || tr.readyState === 'ended';
+    if (down){ downSince ??= performance.now(); if (!paused){ setPaused(true, 'nova down'); $('banner').textContent = LANG === 'he' ? 'נובה מתחברת מחדש…' : 'Nova is reconnecting…'; $('banner').classList.remove('hidden'); }
+      if (!endingNow && performance.now() - downSince > S.reconnectGiveUpMs){ endingNow = true; $('banner').classList.add('hidden'); setPaused(false, 'give up'); fallbackEnding(); } }
+    else if (downSince){ downSince = null; $('banner').classList.add('hidden'); setPaused(false, 'nova back'); }
+  }, 1000);
+}
+
+// ───────────────── lights + stars ─────────────────
+function lightCue(cmdId, secs){ const c = S.commands[cmdId], ms = secs * 1000;
+  try {
+    if (c.light === 'bothWrists'){ K.L.cue({ joint:'lWrist', dir:'UP', windowMs:ms, leadMs:0 }); K.L.cue({ joint:'rWrist', dir:'UP', windowMs:ms, leadMs:0 }); }
+    else if (c.light === 'leftWrist') K.L.cue({ joint:'lWrist', dir:'UP', windowMs:ms, leadMs:0 });
+    else if (c.light === 'rightWrist') K.L.cue({ joint:'rWrist', dir:'UP', windowMs:ms, leadMs:0 });
+    else if (c.light === 'clap'){ if (K.L.clapCue) K.L.clapCue({ windowMs:ms, leadMs:0 }); else { K.L.cue({ joint:'lWrist', windowMs:ms, leadMs:0 }); K.L.cue({ joint:'rWrist', windowMs:ms, leadMs:0 }); } }
+    else if (c.light === 'ice'){ if (K.L.freezeStart) K.L.freezeStart(c.holdMs || 1000); else K.L.cue({ joint:'shoulderC', windowMs:ms, leadMs:0 }); }
+  } catch(e){}
+}
+function clearLights(){ try { if (K.L.clearAll) K.L.clearAll(); else for (const j of ['lWrist','rWrist','shoulderC']) K.L.clearCue?.(j); } catch(e){} }
+function flyStars(n){
+  const cam = $('camWrap').getBoundingClientRect(), jar = $('jar').getBoundingClientRect();
+  for (let i = 0; i < n; i++){ const s = document.createElement('div'); s.className = 'flystar'; s.textContent = '⭐';
+    const x0 = cam.left + cam.width/2 - 22 + i*30, y0 = cam.top + cam.height*0.4;
+    s.style.left = x0 + 'px'; s.style.top = y0 + 'px'; document.body.appendChild(s);
+    requestAnimationFrame(() => { s.style.transform = `translate(${jar.left + 20 - x0}px, ${jar.top - y0}px) scale(.6)`; s.style.opacity = '.2'; });
+    setTimeout(() => s.remove(), 700); }
+}
+let stars = 0, streak = 0, missRun = 0, gotchaRun = 0, tricksHeld = 0, tricksTotal = 0, bestMoment = '', roundStats = [], winMult = 1;
+function addStars(n){ stars += n; $('stars').textContent = stars; flyStars(n); }
+function setStreak(){ $('streak').firstElementChild.style.width = Math.min(100, (streak % S.streakBonusAt) / S.streakBonusAt * 100) + '%'; }
+function setTricks(){ $('tricks').textContent = `🎯 ${tricksHeld}/${tricksTotal}`; }
+function wobble(){ $('stage').classList.remove('wobble'); void $('stage').offsetWidth; $('stage').classList.add('wobble'); }
+
+// ───────────────── presence (C1-C3) ─────────────────
+/* [QA Q2 · 2026-09-26] Same relaxation as the gate: this ran BETWEEN EVERY COMMAND, so with the old
+   all-six-joints rule a child who was fractionally too close got the "step back" screen thrown up
+   after every single call, and the game stalled. It asks for what the judge needs, and gives up
+   waiting after presence.maxWaitMs rather than trapping the child. */
+async function ensurePresence(withClips){
+  const trackable = k => (K.bodyTrackable ? K.bodyTrackable(k) : K.armsVisible(k));
+  if (last && trackable(last)) return;
+  const g = $('gateArms'); g.classList.remove('hidden'); badge('📷'); const t0 = performance.now();
+  if (withClips) await speakLine('fb.comeback');   // [QA Q10] awaited: in engine lipMode an un-awaited clip overlaps the fb.welcome clip below
+  await new Promise(res => { let okSince = null; const t = setInterval(() => {
+    if (performance.now() - t0 > (S.presence.maxWaitMs ?? 12000)){ dbgNote('presence: gave up waiting, continuing'); clearInterval(t); return res(); }
+    const ok = last && trackable(last);
+    if (!ok && performance.now() - t0 > S.presence.lightHintAfterMs) $('gateMsg').textContent = UI.gate + (LANG === 'he' ? ' · ותדליקו אור' : ' · and turn on a light');
+    if (ok){ okSince ??= performance.now(); if (performance.now() - okSince > S.presence.returnHoldMs){ clearInterval(t); res(); } } else okSince = null; }, 100); });
+  g.classList.add('hidden'); $('gateMsg').textContent = UI.gate; badge('👀');
+  if (withClips) await speakLine('fb.welcome');
+}
+
+// ───────────────── the call: one command, spoken, demonstrated, judged ─────────────────
+/* [QA Q1] Her arms move while she SPEAKS, like a real Simon, and the judge window opens when the
+   gesture reaches its PEAK — not when the line ends. The old order (line → gesture → window) opened
+   the window 0.9-2.4s BEFORE her arms arrived for clap/left/right/bear, because those bakes peak late.
+   Children copy what they SEE, so they moved after the window had already closed: real commands were
+   scored 'miss', and on a TRICK the late copier was rewarded 'held' (+2 stars) for moving. This is the
+   single fix the whole QA is ordered around, and practice shares it — practice is where the child is
+   calibrated, so a mistimed window there poisons every threshold for the rest of the game. */
+function windowSecsFor(cmdId, w){
+  return cmdId === 'freeze'
+    ? Math.max(w, (S.commands.freeze.holdMs || 1000) / 1000 + (S.freezeWindowPadS ?? 1.2))       // [QA Q3]
+    : w;
+}
+async function callCommand(cmdId, kind, w, opts = {}){
+  const winSecs = windowSecsFor(cmdId, w);
+  const lineId = opts.lineId || (kind === 'real' ? `cmd.${cmdId}.real` : `cmd.${cmdId}.bare`);
+  const openAfter = (S.windowOpensAtPeakFrac ?? 0.8) * (PEAK[S.commands[cmdId].demo] ?? 0);
+  const gStart = performance.now();
+  const lineP = speakLine(lineId);
+  demo(cmdId); lightCue(cmdId, openAfter / 1000 + winSecs);       // [CLI-FILL] lightCue takes SECONDS; the light must stay lit through the wait so it is still on when the window opens
+  await lineP;
+  const waitMs = gStart + openAfter - performance.now();
+  if (waitMs > 0) await sleep(waitMs);
+  dbgNote(`open ${kind} ${cmdId} @${((performance.now()-gStart)/1000).toFixed(2)}s peak${openAfter|0} win${winSecs.toFixed(1)}s`);
+  const result = await openWindow(cmdId, kind, winSecs, opts);
+  clearLights();
+  return result;
+}
+
+// ───────────────── one step of the show ─────────────────
+async function step(cmdId, kind, secs, rs, roundIdx){
+  await whilePaused(); if (endingNow) return;
+  if (elapsed() > S.capSeconds - 22 && cmdId !== 'freeze') return;                                              // D5
+  await ensurePresence(true);
+  if (kind === 'trick') await settle();                                                                           // A2
+  const w = secs * winMult;
+  const result = await callCommand(cmdId, kind, w, { effortOK: roundIdx + 1 === S.adaptive.effortStarRound });
+  if (result === 'void'){ dbgNote('void (child left)'); return; }                                              // C1: no miss, no gotcha
+  if (kind === 'trick') tricksTotal++;
+  winMult = 1;
+  if (result === 'hit'){
+    missRun = 0; gotchaRun = 0; const bonus = (++streak) % S.streakBonusAt === 0;
+    addStars(1); sfx(cmdId === 'freeze' ? 'ding' : 'pop'); if (cmdId === 'freeze'){ try { K.L.freezeEnd?.(true); } catch(e){} }
+    rs.hits++;
+    if (bonus){ addStars(1); await speakLine('fb.super'); }
+    else if (cmdId === 'freeze') await speakLine('fb.statue');
+    else if (streak % 3 === 0) await speakLine(Math.random() < .5 ? 'fb.yes' : 'fb.nice');
+  } else if (result === 'effort'){
+    /* [QA Q9] The effort star stays — round 1 rewards trying. But the streak is the LISTENING streak,
+       and moving wrongly is not a right decision, so it resets. Before this a child could keep a
+       "Super listener!" streak alive while never once doing the right move. */
+    missRun = 0; streak = 0; addStars(1); sfx('pop'); rs.hits++; await speakLine('fb.tried');                   // A3
+  } else if (result === 'held'){
+    missRun = 0; gotchaRun = 0; const bonus = (++streak) % S.streakBonusAt === 0; tricksHeld++; rs.held++;
+    addStars(2); sfx('twinkle'); try { K.L.isoShimmer?.(); } catch(e){}
+    bestMoment = `stayed still on the ${cmdId === 'clap' ? 'clap' : 'arms'} trick`;
+    await speakLine(bonus ? 'fb.super' : (Math.random() < .5 ? 'fb.held' : 'fb.listened')); if (bonus) addStars(1);
+  } else if (result === 'gotcha'){
+    streak = 0; rs.gotcha++; gotchaRun++; sfx('boing'); try { K.L.gotchaRipple?.(); } catch(e){} wobble();
+    await speakLine(Math.random() < .5 ? 'fb.gotcha' : 'fb.gotcha2');
+    if (gotchaRun >= S.adaptive.gotchasForCoach){ gotchaRun = 0; await speakLine('fb.freezeBody'); }                // B2
+  } else {                                                                                                        // a missed real command: silence
+    streak = 0; missRun++;
+    if (missRun >= S.adaptive.missesForTogether){ missRun = 0; winMult = S.adaptive.togetherWindowMult; await speakLine('fb.together'); }   // B1
+  }
+  setStreak(); setTricks();
+  remember(`step ${cmdId} ${kind} → ${result}. stars ${stars}, streak ${streak}, tricks ${tricksHeld}/${tricksTotal}`);
+  await sleep(S.gapAfterFeedbackMs);
+}
+
+// ───────────────── the whole game ─────────────────
+/* [QA Q8] The maximum is accumulated from the steps ACTUALLY PLAYED, round by round, not from the
+   script up front. Round 2 drops a trick (3 → 2) for a child who already got caught, and every
+   dropped trick is 2 stars off the ceiling — so pre-computing the max made the medal harder for
+   exactly the child the adaptive rule was trying to help. The streak bonus is floored over the total
+   decision count at the end, not per round, so it matches how the bonus is actually awarded. */
+let maxRaw = 0, maxDecisions = 0;
+function addToMax(steps){ for (const [c, k] of steps){ maxRaw += k === 'trick' ? 2 : 1; maxDecisions++; } }
+function maxStarsNow(){ return maxRaw + Math.floor(maxDecisions / S.streakBonusAt); }
+async function practice(){
+  brainOffstage(); K.bed.duck(true);
+  // calibration 1: STILL (A1)
+  await speakLine('practice.still'); sampling = 'still'; await sleep(S.tune.stillSeconds * 1000); sampling = null;
+  await speakLine('practice.intro');
+  // calibration 2: MOVING + REACH, on the practice arms-up (judged with provisional thresholds, never punished)
+  sampling = 'move';
+  let r = await callCommand('armsUp', 'real', S.practice.win);                                                   // [QA Q1] same peak-aligned window as the real game
+  /* [QA Q4] The retry is what keeps the provisional fallback rare: if the child did not raise his arms
+     there is no measured moving level, and everything downstream is a guess off his stillness. Ask once
+     more before accepting that. */
+  if (r !== 'hit') r = await callCommand('armsUp', 'real', S.practice.win, { lineId:'practice.retry' });
+  sampling = null; finishCalibration();
+  if (r === 'hit' || r === 'effort'){ sfx('pop'); await speakLine('practice.yes'); }
+  // the practice trick
+  await speakLine('practice.listen'); await settle();
+  const t = await callCommand('clap', 'trick', S.practice.win);
+  if (t === 'gotcha'){ sfx('boing'); wobble(); await speakLine('practice.caught'); } else { sfx('twinkle'); await speakLine('practice.held'); }
+  remember(`practice done: arms-up ${r}, trick ${t}. calibration ${JSON.stringify(CAL.still)}→${JSON.stringify(CAL.move)}${CAL.provisional ? ' (PROVISIONAL — arm-up never measured)' : ''}`);
+}
+async function round(R, idx){
+  brainOffstage(); K.hud.dots(idx + 1, S.rounds.length);
+  let steps = R.steps.map(s => [...s]);
+  if (idx === 1 && roundStats[0]?.gotcha > 0){                                                                   // B4 adaptive
+    const trickIdx = steps.map((s,i) => s[1] === 'trick' ? i : -1).filter(i => i >= 0);
+    while (steps.filter(s => s[1] === 'trick').length > S.adaptive.round2TricksIfCaught) steps[trickIdx.pop()][1] = 'real';
+  }
+  addToMax(steps);                                                                                               // [QA Q8] after the adaptive change
+  await speakLine(R.intro); sfx('whoosh'); K.bed.start(100, 0.25);
+  const rs = { n:R.n, hits:0, held:0, gotcha:0, tricks:steps.filter(s => s[1] === 'trick').length, startStars:stars };
+  for (let i = 0; i < steps.length; i++){
+    if (endingNow) break;
+    const [c, k] = steps[i];
+    if (i === steps.length - 1 && idx === S.rounds.length - 1) await speakLine('tr.last');
+    await step(c, k, R.win, rs, idx);
+  }
+  rs.stars = stars - rs.startStars; roundStats.push(rs); return rs;
+}
+async function card(rs, idx){
+  $('cardStars').textContent = `⭐ ${rs.stars}`; $('cardLine').textContent = `🎯 ${rs.held}/${rs.tricks} ${UI.tricks}`; $('card').classList.remove('hidden');
+  await handoff('between',
+    `Round ${rs.n} just ended. Facts: ${rs.stars} stars this round, caught ${rs.held} of ${rs.tricks} tricks, got caught ${rs.gotcha} time(s). ` +
+    `Say ONE excited, specific line to the child by name (max 8 words), then stop. Never negative.`,
+    idx === 0 ? 'fallback.card1' : 'fallback.card2');
+  $('card').classList.add('hidden');
+}
+function showScorecard(){
+  const maxStars = maxStarsNow();                                                                                // [QA Q8]
+  const pct = stars / Math.max(1, maxStars), medal = pct >= S.medals.goldFrom ? '🥇' : pct >= S.medals.bronzeBelow ? '🥈' : '🥉';
+  dbgNote(`[MEDAL] ${stars}/${maxStars} = ${(pct*100)|0}% ${medal}`);
+  $('medal').textContent = medal; $('finalScore').textContent = `⭐ ${stars}`; $('finalLine').textContent = `🎯 ${tricksHeld}/${tricksTotal} ${UI.tricks}`;
+  $('scorecard').style.display = 'flex'; return medal;
+}
+async function ending(){
+  endingNow = true; K.bed.stop(); const medal = showScorecard();
+  await handoff('ending',
+    `The game is over. Facts: ${stars} stars, medal ${medal}, caught ${tricksHeld} of ${tricksTotal} tricks. Best moment: ${bestMoment || 'kept playing to the end'}. ` +
+    `Celebrate with the child by name using these real facts, then ask "Did you have fun?" and wait. After the answer, say goodbye by name and invite them to play again tomorrow.`,
+    'fallback.end');
+  K.pulse({ stars, tricksHeld, tricksTotal, rounds: roundStats, seconds: Math.round(elapsed()), cal: CAL.still != null ? { still:CAL.still, move:CAL.move } : null });
+}
+async function fallbackEnding(){ K.bed.stop(); showScorecard(); try { await speakLine('fallback.reconnect'); } catch(e){} K.pulse({ stars, tricksHeld, tricksTotal, rounds: roundStats, seconds: Math.round(elapsed()), reconnectGaveUp:true }); }
+async function main(){
+  brainOnstage('intro'); setBody(S.talkBody); watchNova();
+  await new Promise(res => { const done = () => res(); window.addEventListener('nova:consent', done, { once:true });
+    const b = document.createElement('button'); b.id = 'okBtn'; b.textContent = '✓'; b.style.cssText = 'position:fixed;right:24px;bottom:24px;z-index:95';
+    b.onclick = () => { b.remove(); done(); }; document.body.appendChild(b); window.addEventListener('nova:consent', () => b.remove(), { once:true }); });
+  // [QA Q8] maxStars is no longer pre-computed here — each round adds its own post-adaptive steps.
+  await practice();
+  for (let i = 0; i < S.rounds.length && !endingNow; i++){
+    const rs = await round(S.rounds[i], i);
+    if (i < S.rounds.length - 1 && !endingNow) await card(rs, i);
+  }
+  if (!endingNow) await ending();
+}
+
+// ───────────────── debug ─────────────────
+let DBGN = '';
+function dbgNote(s){ DBGN = s; dbg(); console.log('[NS]', s); }
+function dbg(){ const el = $('dbg'); if (!el || document.body.dataset.debug === '0') return;
+  el.textContent = `t ${elapsed().toFixed(1)}s | phase ${document.body.dataset.phase} | energy ${energy.toFixed(4)} move>${thr.move.toFixed(4)} still ${CAL.still==null?'-':CAL.still.toFixed(4)} | win ${win ? win.kind + ' ' + win.cmdId : '-'} | ⭐${stars} streak ${streak} | ${DBGN}`; }
+
+// ───────────────── boot ─────────────────
+$('pause').onclick = () => setPaused(!paused, 'button');
+$('exit').onclick = () => location.href = '/';
+$('again').onclick = () => location.reload();
+K.boot(async () => {
+  try { await AC.resume(); await preload(); } catch(e){ return K.banner('Nova Says cannot start: ' + e.message); }
+  if (K.bridge?.attachNova){ try { await K.bridge.attachNova({ onVideo: v => { $('novaMain').srcObject = v; $('novaAmbient').srcObject = v; } }); } catch(e){ return K.banner('Nova is not connected: ' + e.message); } }
+  else return K.banner('Nova bridge missing (/shared/nova-bridge.js)');
+  K.start(); main().catch(e => K.banner('Game error: ' + e.message));
+});
+</script></body></html>

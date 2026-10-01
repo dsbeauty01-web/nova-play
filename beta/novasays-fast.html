@@ -46,18 +46,20 @@ button.big{font:800 30px 'Baloo 2';padding:16px 46px;border:0;border-radius:18px
 #okBtn{position:fixed;right:24px;bottom:24px;z-index:95}
 #pause,#exit{position:fixed;top:1.6vh;z-index:60;background:rgba(0,0,0,.45);color:#fff;border:0;border-radius:12px;padding:8px 12px;font-size:18px;cursor:pointer}#pause{right:64px}#exit{right:14px}
 .hidden{display:none!important}
+#finalScore,#cardStars{font-size:clamp(28px,4.6vw,54px)!important;letter-spacing:2px}
+#stars{letter-spacing:2px}
 </style></head><body data-phase="intro" data-debug="1">
 <div id="stage">
   <div id="novaWrap"><video id="novaAmbient" autoplay muted playsinline></video><video id="novaMain" autoplay muted playsinline></video></div>
   <div id="camWrap"><video id="usercam" autoplay muted playsinline></video><canvas id="fx"></canvas><div id="pose"></div><div id="timer"></div></div>
 </div>
-<div id="hud"><div id="dots"></div><div class="pill"><span id="stars">⭐ 0</span></div><div id="combo"></div><div class="pill" id="tricks">🎯 0/0</div><div id="score"></div><div id="tag"></div></div>
+<div id="hud"><div id="dots"></div><div class="pill"><span id="stars"></span></div><div id="combo"></div><div class="pill" id="tricks"></div><div id="score"></div><div id="tag"></div></div>
 <div id="pop"></div><div id="cap"></div><div id="dbg"></div>
 <button id="pause">⏸</button><button id="exit">✕</button>
 <div id="gate"><div style="font:800 48px 'Baloo 2'">Nova Says</div><div id="gateSub" style="opacity:.85;margin-top:6px;max-width:560px;font-size:20px"></div><button id="start" class="big">▶</button></div>
 <div id="gateArms" class="hidden"><div id="gateMsg"></div><div id="ring"></div></div>
 <div id="card" class="hidden"><h2 id="cardStars"></h2><p id="cardLine"></p></div>
-<div id="scorecard"><div id="medal"></div><h1 id="finalScore">0</h1><p id="finalLine"></p><button id="again" class="big">↻</button></div>
+<div id="scorecard"><div id="medal"></div><h1 id="finalScore"></h1><p id="finalLine"></p><button id="again" class="big">↻</button></div>
 <div id="banner" class="hidden"></div>
 <script type="module">
 /* NOVA SAYS — FAST. Built for SPEED: no demo gestures after practice, lines at game-show pace, the next command fires
@@ -193,13 +195,14 @@ async function presence(){
 
 // ───────── score ─────────
 let stars = 0, combo = 0, bestCombo = 0, tricksHeld = 0, tricksTotal = 0, maxStars = 0, decisions = 0, roundLog = [];
-function addStars(n){ stars += n; $('stars').textContent = `⭐ ${stars}`; }
-function setCombo(){ $('combo').textContent = combo >= 2 ? `🔥x${combo}` : ''; }
-function setTricks(){ $('tricks').textContent = `🎯 ${tricksHeld}/${tricksTotal}`; }
+function addStars(n){ stars += n; $('stars').textContent = '⭐'.repeat(Math.min(stars, 12)) + (stars > 12 ? '🌟' : ''); }   // [NO NUMBERS 2026-10-01] icons, never a count
+const starScaled = (n, total, slots = 10) => { const f = total ? Math.max(0, Math.min(slots, Math.round(slots * n / total))) : 0; return '⭐'.repeat(f) + '☆'.repeat(slots - f); };
+function setCombo(){ $('combo').textContent = combo >= 3 ? '🔥' : ''; }
+function setTricks(){ $('tricks').textContent = '🎯'.repeat(Math.min(tricksHeld, 8)); }
 async function right(n, isTrick){
   combo++; bestCombo = Math.max(bestCombo, combo); decisions++; addStars(n); setCombo();
-  if (isTrick){ sfx('twinkle'); pop(`${UI.held} +2⭐`, '#ffdf7e'); } else { sfx('pop', combo); pop('+1⭐', '#ffc23e'); }
-  if (combo % S.comboBonusEvery === 0){ addStars(1); pop(`${UI.combo} x${combo}! +1⭐`, '#ffb27d'); await play('fb.combo', false); }
+  if (isTrick){ sfx('twinkle'); pop(`${UI.held} ⭐⭐`, '#ffdf7e'); } else { sfx('pop', combo); pop('⭐', '#ffc23e'); }
+  if (combo % S.comboBonusEvery === 0){ addStars(1); pop(`${UI.combo} 🔥⭐`, '#ffb27d'); await play('fb.combo', false); }
 }
 
 // ───────── one command ─────────
@@ -260,17 +263,17 @@ async function round(R, idx){
   K.bed.stop(); rs.stars = stars - rs.stars0; roundLog.push(rs); return rs;
 }
 async function card(rs){
-  $('cardStars').textContent = `⭐ ${rs.stars}`; $('cardLine').textContent = `🎯 ${rs.held}/${rs.tricks} ${UI.tricks}`;
+  $('cardStars').textContent = '⭐'.repeat(Math.min(rs.stars, 12)) || '✨'; $('cardLine').textContent = '🎯'.repeat(rs.held) || '';
   $('card').classList.remove('hidden'); sfx('ding'); await sleep(2200); $('card').classList.add('hidden');
 }
 function maxFor(){ let m = 0, d = 0; for (const r of S.rounds) for (const [c, k] of r.steps){ m += k === 'trick' ? 2 : 1; d++; } return m + Math.floor(d / S.comboBonusEvery); }
 async function ending(){
   over = true; K.bed.stop(); await play('tr.done');
   const pct = stars / Math.max(1, maxStars), medal = pct >= S.medals.goldFrom ? '🥇' : pct >= S.medals.silverFrom ? '🥈' : '🥉';
-  $('medal').textContent = medal; $('finalScore').textContent = `⭐ ${stars}`; $('finalLine').textContent = `🎯 ${tricksHeld}/${tricksTotal} · 🔥x${bestCombo}`;
+  $('medal').textContent = medal; $('finalScore').textContent = starScaled(stars, maxStars); $('finalLine').textContent = '🎯'.repeat(Math.min(tricksHeld, 8)) + (bestCombo >= 3 ? ' 🔥' : '');
   $('scorecard').style.display = 'flex';
   brainOnstage('ending'); setBody(S.talkBody);
-  const spoke = await brainSpeak(`The game is over. Real facts: ${stars} stars, medal ${medal}, survived ${tricksHeld} of ${tricksTotal} tricks, best combo ${bestCombo}. ` +
+  const spoke = await brainSpeak(`The game is over. Real facts: medal ${medal}, survived ${tricksHeld} of ${tricksTotal} tricks, best combo ${bestCombo}. ` +
     `Celebrate with the child by name using ONLY these facts, ask "Did you have fun?" and wait. After the answer, say goodbye by name.`);
   if (!spoke) await play('fallback.end');
   K.pulse({ game:'novasays-fast', stars, tricksHeld, tricksTotal, bestCombo, rounds:roundLog, seconds:Math.round(now() - T0) });
