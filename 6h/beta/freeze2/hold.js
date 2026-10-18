@@ -33,7 +33,11 @@ export class Hold {
   confidence(){
     const seen = this.frames ? this.seen / this.frames : 0;
     if (this.result === 'noshow' || seen < this.T.seenMin) return 0.3;
-    if (this.result === 'held') return (seen >= 0.9 && this.maxE < 0.7 * this.J.st.thr.move) ? 0.9 : 0.65;
+    // "clearly still" = under the calibrated still line, or well under the move bar. [2026-10-18] with the move bar at
+    // 0.9-0.95 (was 1.1-1.4) the old 0.7×move alone sat below a jittery camera's still noise and made every still child
+    // "unsure"; praise specificity, never the star, depends on this.
+    const clearly = Math.max(0.7 * this.J.st.thr.move, this.J.st.thr.still);
+    if (this.result === 'held') return (seen >= 0.9 && this.maxE < clearly) ? 0.9 : 0.65;
     return seen >= 0.9 ? 0.85 : 0.6;
   }
 }
