@@ -1,0 +1,20 @@
+{
+ "_note": "Hebrew, GIRL (?g=f). Same 17 ids as lines-en.json. Only THREE lines carry gender — go.countdown (מוכנה), missed (תתפסי), fallback.end (אלופת); the rest are deliberately genderless (noun phrases / first person) so a wrong ?g= can never misgender a child mid-game. NEVER HEARD BY A HEBREW SPEAKER — the founder's ear is the gate.",
+ "go.countdown":    "מוכנה? שלוש… שתיים… אחת… לרקוד!",
+ "sting.freeze":    "קופאים!",
+ "warn.ready":      "עוד רגע…",
+ "held.statue":     "פסל!",
+ "held.flamingo":   "פלמינגו מושלם!",
+ "held.frog":       "צפרדע יציבה!",
+ "held.bear":       "דוב יציב!",
+ "held.star":       "כוכב על!",
+ "almost":          "כמעט! כל כך קרוב!",
+ "missed":          "הפעם הבאה תתפסי אותו!",
+ "fakeout":         "חיחי — רימיתי אותך!",
+ "tr.round2":       "סבב שני — יותר מהר!",
+ "tr.round3":       "הסבב האחרון!",
+ "tr.last":         "האחרון — קיפאון הכוכב!",
+ "fallback.card1":  "מדהים! סבב שני!",
+ "fallback.card2":  "איזה יופי! הסבב האחרון!",
+ "fallback.end":    "איזו אלופת קיפאון! נתראה מחר!"
+}

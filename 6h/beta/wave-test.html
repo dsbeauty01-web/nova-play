@@ -1,0 +1,114 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nova · Wave game — light + score test</title>
+<style>
+  html,body{margin:0;height:100%;background:radial-gradient(120% 120% at 50% 20%,#3a1d6e 0%,#1a0b33 55%,#0b0618 100%);overflow:hidden;font-family:"Baloo 2",system-ui,sans-serif;color:#fff}
+  #stage{position:fixed;inset:0}#fig{position:absolute;inset:0;z-index:1}#fx{position:absolute;inset:0;z-index:2}
+  #hud{position:fixed;top:2vh;left:0;right:0;display:flex;gap:20px;justify-content:center;align-items:center;z-index:5}
+  #score{font-size:44px;font-weight:800;color:#f2c66d;font-variant-numeric:tabular-nums;min-width:90px;text-align:center}
+  #phase{background:#7c5cbf;padding:5px 16px;border-radius:999px;font-weight:800}
+  #cap{position:fixed;left:0;right:0;bottom:6vh;text-align:center;z-index:5;font-weight:800;font-size:clamp(22px,5vw,38px);text-shadow:0 2px 20px rgba(0,0,0,.6)}
+  #tag{position:fixed;top:14px;left:14px;z-index:5;color:#ffdf7e;font-weight:700;font-size:13px;background:rgba(10,6,25,.6);padding:4px 10px;border-radius:8px}
+  #chip{position:fixed;bottom:10px;left:10px;z-index:5;background:#7c5cbf;padding:2px 9px;border-radius:8px;font:600 11px/1 "Nunito",sans-serif}
+</style></head>
+<body>
+<div id="stage"><canvas id="fig"></canvas><canvas id="fx"></canvas></div>
+<div id="hud"><div id="phase">WAVE</div><div id="score">0</div></div>
+<div id="tag">WAVE GAME · light + score test (driven waves)</div>
+<div id="cap">Wave — arms like water</div>
+<div id="chip">BETA b0.19</div>
+<script type="module">
+import { LightEngine } from '../shared/light-engine.js';
+import { MoverEngine } from '../shared/mover-engine.js';
+import { WaveRule } from '../shared/mover-rules.js';
+
+const fig = document.getElementById('fig'), fcx = fig.getContext('2d'), fx = document.getElementById('fx');
+function fit(c){ c.width = innerWidth; c.height = innerHeight; }
+fit(fig); fit(fx); addEventListener('resize', () => { fit(fig); fit(fx); L.fit(); });
+const L = new LightEngine(fx, { tier: 'adult', mirror: false });   // wave game = adult tier
+L.fit = () => { fx.width = innerWidth; fx.height = innerHeight; }; L.fit();
+const E = new MoverEngine();
+const CHAIN = { R: ['rShoulder', 'rElbow', 'rWrist', 'rIndex'], L: ['lShoulder', 'lElbow', 'lWrist', 'lIndex'] };
+const waveR = new WaveRule(E, 'R'), waveL = new WaveRule(E, 'L');
+
+const BASE = {
+  nose: { x: .50, y: .18 }, lShoulder: { x: .40, y: .35 }, rShoulder: { x: .60, y: .35 },
+  rElbow: { x: .72, y: .40 }, rWrist: { x: .84, y: .45 }, rIndex: { x: .91, y: .48 },
+  lElbow: { x: .28, y: .40 }, lWrist: { x: .16, y: .45 }, lIndex: { x: .09, y: .48 },
+  lHip: { x: .45, y: .64 }, rHip: { x: .55, y: .64 },
+};
+const clone = o => { const r = {}; for (const k in o) r[k] = { x: o[k].x, y: o[k].y }; return r; };
+function withDerived(j){ const o = {}; for (const [n, p] of Object.entries(j)) o[n] = { x: p.x, y: p.y };
+  o.shoulderC = { x: (j.lShoulder.x + j.rShoulder.x) / 2, y: (j.lShoulder.y + j.rShoulder.y) / 2 };
+  o.hipC = { x: (j.lHip.x + j.rHip.x) / 2, y: (j.lHip.y + j.rHip.y) / 2 }; o.head = { x: j.nose.x, y: j.nose.y }; return o; }
+
+// a wave EVENT: a bump travels down `arm` starting at time `t` (peaks 180ms apart, ~0.9s total)
+// mover_bench-proven wave: shoulder→elbow→wrist→index each dip 0.16 deep, staggered 180ms (triangular,
+// so adjacent-sample drops survive EMA). ALL FOUR joints must peak in order for check() to score.
+const AMP = 0.16, HALF = 0.12;
+const WAVES = [ {t:2.0,arm:'R'},{t:4.2,arm:'R'},{t:6.4,arm:'R'},{t:8.6,arm:'L'},{t:10.8,arm:'L'},{t:13.0,arm:'L'},{t:15.2,arm:'R'},{t:17.0,arm:'L'} ];
+const HOLD_T = 18.6, HOLD_MS = 1500, END_T = 21.0;
+function liftFor(arm, kName, tSec){                     // vertical offset for one arm-joint from all active wave events
+  const idx = { rShoulder:0, rElbow:1, rWrist:2, rIndex:3, lShoulder:0, lElbow:1, lWrist:2, lIndex:3 }[kName]; let off = 0;
+  for (const w of WAVES){ if (w.arm !== arm) continue; const center = w.t + 0.12 + idx * 0.18, d = Math.abs(tSec - center); if (d < HALF) off += AMP * (1 - d / HALF); }
+  return off;
+}
+
+function drawFig(j){ const w = fig.width, h = fig.height, X = p => p.x * w, Y = p => p.y * h;
+  fcx.clearRect(0, 0, w, h); fcx.strokeStyle = 'rgba(190,170,255,.30)'; fcx.lineWidth = Math.max(8, w * .013); fcx.lineCap = 'round';
+  const seg = (a, b) => { fcx.beginPath(); fcx.moveTo(X(a), Y(a)); fcx.lineTo(X(b), Y(b)); fcx.stroke(); };
+  seg(j.lShoulder, j.rShoulder); seg(j.rShoulder, j.rElbow); seg(j.rElbow, j.rWrist); seg(j.rWrist, j.rIndex);
+  seg(j.lShoulder, j.lElbow); seg(j.lElbow, j.lWrist); seg(j.lWrist, j.lIndex);
+  const sc = { x: (j.lShoulder.x + j.rShoulder.x) / 2, y: (j.lShoulder.y + j.rShoulder.y) / 2 }, hc = { x: (j.lHip.x + j.rHip.x) / 2, y: (j.lHip.y + j.rHip.y) / 2 };
+  seg(sc, hc); seg(j.lHip, j.rHip);
+  fcx.fillStyle = 'rgba(190,170,255,.30)'; fcx.beginPath(); fcx.arc(X(j.nose), Y(j.nose), w * .03, 0, 7); fcx.fill(); }
+
+// ── the game (adult scoring, the WAVE-FULL formula) ──
+let score = 0, streak = 0, phase = 'intro', holdWin = null, held = null;
+const setScore = () => document.getElementById('score').textContent = score;
+const setPhase = p => { phase = p; document.getElementById('phase').textContent = p === 'hold' ? 'FREEZE!' : 'WAVE'; };
+const cap = t => document.getElementById('cap').textContent = t;
+
+const t0 = performance.now(); let lastPose = 0, cuedR = new Set();
+function frame(){
+  const now = performance.now(), tSec = (now - t0) / 1000;
+  if (now - lastPose >= 50){                           // pose at ~20fps (matches the detector's proven cadence)
+    lastPose = now;
+    const j = clone(BASE);
+    for (const kn of ['rShoulder','rElbow','rWrist','rIndex']) j[kn].y = BASE[kn].y - liftFor('R', kn, tSec);
+    for (const kn of ['lShoulder','lElbow','lWrist','lIndex']) j[kn].y = BASE[kn].y - liftFor('L', kn, tSec);
+    drawFig(j);
+    const out = E.update(withDerived(j), now); L.setJoints(out);
+    // preview the path just before each wave (cometCue)
+    for (const w of WAVES){ const key = w.t; if (tSec >= w.t - 0.9 && tSec < w.t - 0.6 && !cuedR.has(key)){ cuedR.add(key); L.cometCue(CHAIN[w.arm]); } }
+    if (phase === 'game'){
+      const rR = waveR.check(now), rL = waveL.check(now);
+      for (const [r, rule, arm] of [[rR, waveR, 'R'], [rL, waveL, 'L']]){
+        if (r?.hit){ L.cometHit(r.quality, rule);
+          const base = r.quality === 'smooth' ? 160 : r.quality === 'good' ? 140 : 120, pts = base + (r.iso ? 20 : 0);
+          streak = r.quality === 'smooth' ? streak + 1 : 0; const mult = streak >= 3 ? 2 : 1;
+          score += pts * mult; setScore();
+          L.hit(arm === 'R' ? 'rWrist' : 'lWrist', r.iso ? 'iso' : 'good', pts * mult); }
+      }
+    } else { waveR.check(now); waveL.check(now); }      // keep feeding history during intro
+    // HOLD → the ice glow
+    if (phase === 'game' && tSec >= HOLD_T){ setPhase('hold'); cap('Hold the wave… freeze it'); L.cometStop(); L.freezeStart(HOLD_MS); holdWin = now; }
+    if (phase === 'hold' && held === null && now - holdWin >= HOLD_MS){ held = true; L.freezeEnd(true); score += 50; setScore(); cap('FROZEN!'); L.flyUp(L.P('head') || {x:innerWidth/2,y:innerHeight/3}, 'FROZEN!'); }
+  }
+  if (tSec >= END_T && !window.__demoDone){ cap('Wave — nice flow'); window.__demoDone = true; }
+  requestAnimationFrame(frame);
+}
+
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function run(){
+  E.startCal(); await sleep(600); E.finishCal();
+  L.cometLive(waveR, CHAIN.R); L.cometLive(waveL, CHAIN.L);
+  setPhase('game'); window.__ready = true;
+  cap('Right arm — let it travel'); await sleep(6000);
+  cap('Now the left — pass it across'); await sleep(6000);
+  cap('Both arms — keep it flowing'); await sleep(5000);
+}
+frame();
+addEventListener('load', () => setTimeout(run, 300));
+</script>
+</body></html>

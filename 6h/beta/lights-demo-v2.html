@@ -1,0 +1,135 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nova Light Engine — real body (v2)</title>
+<style>
+  html,body{margin:0;height:100%;background:radial-gradient(120% 120% at 50% 18%,#3a1d6e 0%,#1a0b33 55%,#0b0618 100%);overflow:hidden;font-family:"Baloo 2",system-ui,sans-serif}
+  #stage{position:fixed;inset:0}
+  #bg{position:absolute;inset:0;z-index:1}          /* the real camera body */
+  #fx{position:absolute;inset:0;z-index:2}          /* the light engine canvas */
+  #cap{position:fixed;left:0;right:0;bottom:6vh;text-align:center;z-index:3;color:#fff;
+    font-weight:800;font-size:clamp(22px,5vw,40px);text-shadow:0 2px 20px rgba(0,0,0,.6);letter-spacing:.01em}
+  #tag{position:fixed;top:14px;left:14px;z-index:3;color:#ffdf7e;font-weight:700;font-size:13px;
+    background:rgba(10,6,25,.6);padding:4px 10px;border-radius:8px}
+  #eng{position:fixed;top:14px;right:14px;z-index:3;color:#aee8ff;font-weight:700;font-size:12px;
+    background:rgba(10,6,25,.6);padding:4px 10px;border-radius:8px}
+  #chip{position:fixed;bottom:10px;left:10px;z-index:3;background:#7c5cbf;color:#fff;padding:2px 9px;border-radius:8px;font:600 11px/1 "Nunito",sans-serif}
+  video{position:absolute;width:2px;height:2px;opacity:0;pointer-events:none}   /* source only; we paint it onto #bg */
+</style></head>
+<body>
+<div id="stage">
+  <canvas id="bg"></canvas>
+  <canvas id="fx"></canvas>
+</div>
+<video id="cam" autoplay muted playsinline></video>
+<div id="tag">NOVA LIGHT ENGINE · real body</div>
+<div id="eng">pose: …</div>
+<div id="cap">Nova Light Engine</div>
+<div id="chip">BETA b0.14</div>
+<script type="module">
+import { LightEngine } from '../shared/light-engine.js';
+import { MoverEngine } from '../shared/mover-engine.js';
+import { PoseEngine } from '../shared/pose-engine.js';
+
+const bg = document.getElementById('bg'), bcx = bg.getContext('2d');
+const fx = document.getElementById('fx');
+const cam = document.getElementById('cam');
+const cap = t => document.getElementById('cap').textContent = t;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const CVW = () => innerWidth, CVH = () => innerHeight;
+function fit(c){ c.width = innerWidth; c.height = innerHeight; }
+fit(bg); fit(fx); addEventListener('resize', () => { fit(bg); fit(fx); L.fit(); });
+
+const L = new LightEngine(fx, { tier: 'kids', mirror: false });   // joints are pre-fit to the drawn video rect
+L.fit = () => { fx.width = innerWidth; fx.height = innerHeight; };
+L.fit();
+const E = new MoverEngine();
+
+// contain-fit the (landscape) camera into the (portrait) stage; the SAME rect maps joints → pixels
+let rect = { dx: 0, dy: 0, dw: 1, dh: 1 };
+function computeRect(){
+  const vw = cam.videoWidth || 480, vh = cam.videoHeight || 360, cw = CVW(), ch = CVH();
+  const s = Math.min(cw / vw, ch / vh); const dw = vw * s, dh = vh * s;
+  rect = { dx: (cw - dw) / 2, dy: (ch - dh) / 2, dw, dh };
+}
+function drawBg(){
+  const cw = CVW(), ch = CVH(); bcx.clearRect(0, 0, cw, ch);
+  if (cam.readyState >= 2) { computeRect(); bcx.drawImage(cam, rect.dx, rect.dy, rect.dw, rect.dh);
+    bcx.fillStyle = 'rgba(20,10,45,.32)'; bcx.fillRect(0, 0, cw, ch); }   // dim so the gold reads
+  requestAnimationFrame(drawBg);
+}
+
+// remap normalized (video-space) joints into the drawn video rect, in 0..1 of the stage
+function toStage(out, engine){
+  const cw = CVW(), ch = CVH(), vw = cam.videoWidth || 480, vh = cam.videoHeight || 360;
+  const o = {};
+  for (const [n, j] of Object.entries(out)) {
+    if (!j || typeof j.x !== 'number') continue;
+    const nx = engine === 'movenet' ? j.x / vw : j.x, ny = engine === 'movenet' ? j.y / vh : j.y;
+    o[n] = { x: (rect.dx + nx * rect.dw) / cw, y: (rect.dy + ny * rect.dh) / ch, dir: j.dir };
+  }
+  return o;
+}
+
+let t0 = performance.now(), haveBody = false;
+function onPose(nova, engine){
+  const t = performance.now();
+  const out = E.update(nova, t);                    // detection stays in raw video space
+  L.setJoints(toStage(out, engine));                // render on the real body
+  if (out.shoulderC) haveBody = true;
+}
+
+async function boot(){
+  const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 480, height: 360 }, audio: false });
+  cam.srcObject = stream; await cam.play().catch(() => {});
+  await new Promise(r => cam.readyState >= 2 ? r() : cam.addEventListener('loadeddata', r, { once: true }));
+  computeRect(); drawBg();
+  const eng = await PoseEngine.start(cam, onPose);
+  document.getElementById('eng').textContent = 'pose: ' + eng;
+  // let the engine calibrate on a few still frames (like the no-score intro does)
+  E.startCal(); await sleep(1300); E.finishCal();
+  script();
+}
+
+// anchor a light on a real joint (fallback to shoulderC / stage-center if that joint is missing)
+const P = n => L.P(n) || L.P('shoulderC') || { x: CVW()/2, y: CVH()/2 };
+
+async function script(){
+  window.__ready = true;                        // recorder waits for this before rolling
+  cap('Nova Light Engine — on a real body'); await sleep(1600);
+
+  // 1 · SHOULDER POP — cue shows the closing ring + the brighter PERFECT inner zone
+  cap('Shoulder pop — hit it in the bright ring'); L.cue({ joint: 'lShoulder', dir: 'UP', windowMs: 850, leadMs: 900 });
+  await sleep(1150); L.hit('lShoulder', 'iso', 15, 'PERFECT!'); L.isoShimmer(); await sleep(1100);
+
+  // 2 · RIB SLIDE with the isolation pair (hips + head "stay still" dashed rings) — GOOD timing
+  cap('Rib slide — hips & head stay still'); L.cue({ joint: 'shoulderC', dir: 'R', windowMs: 1000, leadMs: 900, still: ['hipC', 'head'] });
+  await sleep(1500); L.hit('shoulderC', 'iso', 18, 'GOOD'); L.isoShimmer(); await sleep(1100);
+
+  // 3 · WAVE — the comet rides the arm chain
+  cap('Wave — down the arm'); L.comet(['rShoulder', 'rElbow', 'rWrist', 'rIndex'], 'smooth'); await sleep(950);
+  L.comet(['lShoulder', 'lElbow', 'lWrist', 'lIndex'], 'good'); await sleep(1300);
+
+  // 4 · CLAP — both wrists get orbs + a dotted bridge; on contact the burst is BETWEEN the hands + a real clap sound
+  cap('Clap — bring your hands together'); L.clapCue({ left: 'lWrist', right: 'rWrist', windowMs: 900, leadMs: 900 });
+  await sleep(1500); L.clapHit('perfect', 20); await sleep(1400);
+
+  // 5 · FREEZE — an ice ring around the whole body CLOSES over the hold = the stay-still countdown
+  cap('FREEZE — stay still while the ring closes'); L.freezeCue(3800);
+  await sleep(3900); L.freezeHeld(); cap('FROZEN! — you held it'); await sleep(1600);
+
+  // 6 · DETECTION WINDOW everywhere — grade words float up (PERFECT / GOOD / OK)
+  cap('Every cue shows WHEN to hit'); L.cue({ joint: 'rShoulder', dir: 'UP', windowMs: 800, leadMs: 700 });
+  await sleep(1050); L.hit('rShoulder', 'good', 12, 'OK'); await sleep(1000);
+
+  // 7 · MISS is gentle — the window just fades, no punishment, never red
+  cap('Miss? The ring just fades — no red, no penalty'); L.cue({ joint: 'hipC', dir: null, windowMs: 700, leadMs: 700 });
+  await sleep(2000);   // let it close with no hit → soft fade
+
+  // 8 · warm wobble nudge (a correction, still warm gold — never red)
+  cap('A wobble gets a soft warm nudge'); L.warm('hipC'); await sleep(1600);
+
+  cap('Nova Light Engine'); window.__demoDone = true;
+}
+addEventListener('load', () => setTimeout(() => boot().catch(e => { document.getElementById('eng').textContent = 'pose: FAIL ' + e.message; window.__demoDone = true; }), 300));
+</script>
+</body></html>

@@ -1,0 +1,136 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nova · Wave — LIVE (your camera)</title>
+<style>
+  html,body{margin:0;height:100%;background:radial-gradient(120% 120% at 50% 18%,#3a1d6e 0%,#1a0b33 55%,#0b0618 100%);overflow:hidden;font-family:"Baloo 2",system-ui,sans-serif}
+  #stage{position:fixed;inset:0}
+  #bg{position:absolute;inset:0;z-index:1}          /* the real camera body */
+  #fx{position:absolute;inset:0;z-index:2}          /* the light engine canvas */
+  #cap{position:fixed;left:0;right:0;bottom:6vh;text-align:center;z-index:3;color:#fff;
+    font-weight:800;font-size:clamp(22px,5vw,40px);text-shadow:0 2px 20px rgba(0,0,0,.6);letter-spacing:.01em}
+  #tag{position:fixed;top:14px;left:14px;z-index:3;color:#ffdf7e;font-weight:700;font-size:13px;
+    background:rgba(10,6,25,.6);padding:4px 10px;border-radius:8px}
+  #eng{position:fixed;top:14px;right:14px;z-index:3;color:#aee8ff;font-weight:700;font-size:12px;
+    background:rgba(10,6,25,.6);padding:4px 10px;border-radius:8px}
+  #chip{position:fixed;bottom:10px;left:10px;z-index:3;background:#7c5cbf;color:#fff;padding:2px 9px;border-radius:8px;font:600 11px/1 "Nunito",sans-serif}
+  video{position:absolute;width:2px;height:2px;opacity:0;pointer-events:none}   /* source only; we paint it onto #bg */
+</style></head>
+<body>
+<div id="stage">
+  <canvas id="bg"></canvas>
+  <canvas id="fx"></canvas>
+</div>
+<video id="cam" autoplay muted playsinline></video>
+<div id="tag">WAVE · LIVE — wave your arm</div>
+<div id="eng">pose: …</div>
+<div id="cap">Nova Light Engine</div>
+<div id="chip">LIVE · comet</div>
+<script type="module">
+import { LightEngine } from '../shared/light-engine.js';
+import { MoverEngine } from '../shared/mover-engine.js';
+import { WaveRule } from '../shared/mover-rules.js';
+import { PoseEngine } from '../shared/pose-engine.js';
+
+const bg = document.getElementById('bg'), bcx = bg.getContext('2d');
+const fx = document.getElementById('fx');
+const cam = document.getElementById('cam');
+const cap = t => document.getElementById('cap').textContent = t;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const CVW = () => innerWidth, CVH = () => innerHeight;
+function fit(c){ c.width = innerWidth; c.height = innerHeight; }
+fit(bg); fit(fx); addEventListener('resize', () => { fit(bg); fit(fx); L.fit(); });
+
+const L = new LightEngine(fx, { tier: 'kids', mirror: false });   // joints are pre-fit to the drawn video rect
+L.fit = () => { fx.width = innerWidth; fx.height = innerHeight; };
+L.fit();
+const E = new MoverEngine();
+const CHAIN_R = ['rShoulder', 'rElbow', 'rWrist', 'rIndex'], CHAIN_L = ['lShoulder', 'lElbow', 'lWrist', 'lIndex'];
+const waveR = new WaveRule(E, 'R'), waveL = new WaveRule(E, 'L');
+
+// contain-fit the (landscape) camera into the (portrait) stage; the SAME rect maps joints → pixels
+let rect = { dx: 0, dy: 0, dw: 1, dh: 1 };
+function computeRect(){
+  const vw = cam.videoWidth || 480, vh = cam.videoHeight || 360, cw = CVW(), ch = CVH();
+  const s = Math.min(cw / vw, ch / vh); const dw = vw * s, dh = vh * s;
+  rect = { dx: (cw - dw) / 2, dy: (ch - dh) / 2, dw, dh };
+}
+function drawBg(){
+  const cw = CVW(), ch = CVH(); bcx.clearRect(0, 0, cw, ch);
+  if (cam.readyState >= 2) { computeRect(); bcx.drawImage(cam, rect.dx, rect.dy, rect.dw, rect.dh);
+    bcx.fillStyle = 'rgba(20,10,45,.32)'; bcx.fillRect(0, 0, cw, ch); }   // dim so the gold reads
+  requestAnimationFrame(drawBg);
+}
+
+// remap normalized (video-space) joints into the drawn video rect, in 0..1 of the stage
+function toStage(out, engine){
+  const cw = CVW(), ch = CVH(), vw = cam.videoWidth || 480, vh = cam.videoHeight || 360;
+  const o = {};
+  for (const [n, j] of Object.entries(out)) {
+    if (!j || typeof j.x !== 'number') continue;
+    const nx = engine === 'movenet' ? j.x / vw : j.x, ny = engine === 'movenet' ? j.y / vh : j.y;
+    o[n] = { x: (rect.dx + nx * rect.dw) / cw, y: (rect.dy + ny * rect.dh) / ch, dir: j.dir };
+  }
+  return o;
+}
+
+let t0 = performance.now(), haveBody = false;
+function onPose(nova, engine){
+  const t = performance.now();
+  const out = E.update(nova, t);                    // detection stays in raw video space
+  L.setJoints(toStage(out, engine));                // render on the real body
+  if (out.shoulderC) haveBody = true;
+  // feed BOTH wave rules every frame; a detected wave adds the follow-through overshoot on that arm
+  const rR = waveR.check(t), rL = waveL.check(t);
+  if (rR?.hit) L.cometHit(rR.quality, waveR);
+  if (rL?.hit) L.cometHit(rL.quality, waveL);
+}
+
+async function boot(){
+  const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 480, height: 360 }, audio: false });
+  cam.srcObject = stream; await cam.play().catch(() => {});
+  await new Promise(r => cam.readyState >= 2 ? r() : cam.addEventListener('loadeddata', r, { once: true }));
+  computeRect(); drawBg();
+  const eng = await PoseEngine.start(cam, onPose);
+  document.getElementById('eng').textContent = 'pose: ' + eng;
+  // let the engine calibrate on a few still frames (like the no-score intro does)
+  E.startCal(); await sleep(1300); E.finishCal();
+  L.cometLive(waveR, CHAIN_R); L.cometLive(waveL, CHAIN_L);   // the comet now rides whichever arm actually waves
+  script();
+}
+
+// anchor a light on a real joint (fallback to shoulderC / stage-center if that joint is missing)
+const P = n => L.P(n) || L.P('shoulderC') || { x: CVW()/2, y: CVH()/2 };
+
+async function script(){
+  window.__ready = true;
+  // LIVE: the comet rides your real wave forever — no timeline, no ending.
+  cap('👋 Wave your RIGHT arm — watch the light ride it'); L.cometCue(CHAIN_R);
+  await sleep(6000); cap('now the LEFT arm'); L.cometCue(CHAIN_L);
+  await sleep(6000); cap('👋 wave either arm — the light follows you');
+  // keep it live: re-preview the path occasionally, never stop
+  let n = 0; setInterval(() => { L.cometCue(n++ % 2 ? CHAIN_L : CHAIN_R); }, 9000);
+}
+// SELF-TEST PROBE (?probe=1): measure the comet's on-screen width, longest active span, and glow contrast
+function probe(){
+  const lc = L._lastComet, now = performance.now();
+  const P = window.__probe || (window.__probe = { maxWidth: 0, activeMs: 0, minContrast: 1, drew: false, _t0: 0 });
+  if (lc && now - lc.t < 120) {
+    P.drew = true;
+    const ctx = fx.getContext('2d'), y = Math.max(0, Math.min(fx.height - 1, Math.round(lc.y))), half = 90;
+    const x0 = Math.max(0, Math.round(lc.x) - half), w = Math.min(fx.width - x0, half * 2);
+    let left = -1, right = -1, peak = 0;
+    try { const row = ctx.getImageData(x0, y, w, 1).data;
+      for (let i = 0; i < w; i++) { const a = row[i*4+3], lum = (row[i*4]*0.2126 + row[i*4+1]*0.7152 + row[i*4+2]*0.0722) * (a/255);
+        if (a > 55) { if (left < 0) left = i; right = i; } if (lum > peak) peak = lum; } } catch (e) {}
+    const width = left >= 0 ? right - left : 0;
+    P.maxWidth = Math.max(P.maxWidth, width);
+    const contrast = peak / 255;                     // additive brightness the comet lays over the dimmed webcam
+    if (width >= 10) P.minContrast = Math.min(P.minContrast, contrast);
+    if (!P._t0) P._t0 = now; P.activeMs = Math.max(P.activeMs, now - P._t0);
+  } else { P._t0 = 0; }
+  requestAnimationFrame(probe);
+}
+if (/[?&]probe=1/.test(location.search)) probe();
+addEventListener('load', () => setTimeout(() => boot().catch(e => { document.getElementById('eng').textContent = 'pose: FAIL ' + e.message; window.__demoDone = true; }), 300));
+</script>
+</body></html>

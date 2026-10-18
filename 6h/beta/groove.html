@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Groove · Nova</title>
+<!-- beta/groove.html — Groove (6-hour mission, Phase 4). Move to the beat; never a fail. Judge: beta/lib/groove-game.js.
+     Song: freezegame/animal-freeze-song.mp3, 129.2 BPM, first beat 0.151 s (measured off the live Freeze). -->
+<link rel="stylesheet" href="play.css">
+</head><body>
+<div id="stage"><video id="cam" playsinline muted></video><canvas id="fx"></canvas></div>
+<div id="topbar"><button class="back" id="back">←</button><div id="stars"></div><div id="dots"></div></div>
+<div id="doctor"><div class="outline"></div><div class="msg"></div><div class="bar"><i></i></div><button class="big go"></button></div>
+<div id="ring"></div><div id="card"></div><div id="cap"></div>
+<div class="screen on" id="startScr"><h1 id="title">Groove!</h1><p id="howto"></p><button class="big" id="go">▶</button></div>
+<div class="screen" id="end"><div id="medal"></div><div id="medalStars"></div><p id="endLine"></p>
+  <div class="row"><button class="big" id="again"></button><button class="big alt" id="back2"></button></div><button class="save" id="save"></button></div>
+<script type="module">
+import { createGrooveGame, SONG } from './lib/groove-game.js';
+import { toJudge } from './lib/kp.js';
+import { createLights } from '../shared/nova-lights.js';
+import { Q, getLang, applyLang, COMMON, createHud, caption, card, ring, medalScreen, createSource, createRecorder, guideFor } from './lib/play.js';
+import { createNovaEvents } from './lib/events.js';
+import { runDoctor } from './lib/doctor.js';
+
+const $ = id => document.getElementById(id);
+const lang = getLang(); applyLang(lang);
+const L = COMMON[lang];
+const TXT = {
+  en: { title: 'Groove!', howto: 'Move to the music — bounce, sway, arms up! The ring closes on every beat.', ready: 'Get ready…',
+        prompts: ['Bounce! 🎵', 'Sway side to side!', 'Arms up! 🙌', 'Groove your way! 💃'], star: 'Groovy! ⭐', bonus: 'On the beat! ⭐', notyet: 'Move a little bigger!' },
+  he: { title: 'גרוב!', howto: 'זזים עם המוזיקה — קפיצות, נדנודים, ידיים למעלה! הטבעת נסגרת על כל ביט.', ready: 'מתכוננים…',
+        prompts: ['קופצים! 🎵', 'מתנדנדים לצדדים!', 'ידיים למעלה! 🙌', 'גרוב בדרך שלך! 💃'], star: 'איזה גרוב! ⭐', bonus: 'בדיוק על הביט! ⭐', notyet: 'עוד קצת יותר גדול!' },
+}[lang];
+$('title').textContent = TXT.title; $('howto').textContent = TXT.howto; $('back').textContent = lang === 'he' ? '→' : '←';
+$('back').onclick = () => location.href = 'index.html' + location.search;
+
+const fast = Q.get('fast') === '1';
+const lights = createLights($('fx'), { video: $('cam') });
+const rec = createRecorder('groove', lang);
+const brain = createNovaEvents('groove', ev => rec.nova(ev));     // reaction triggers for the avatar: window.novaEvents
+const music = new Audio(SONG.src); music.volume = 0.7;
+let doc = null, game, hud, src, phaseCap = ['', ''], ended = false, lastFrame = null, last = null;
+function say(text, cls = ''){ phaseCap = [text, cls]; if (game?.state.seen !== false) caption(text, cls); }
+
+function onEvent(type, d){
+  const t = performance.now() / 1000; rec.event(type, d, t); brain(type, d);
+  if (type === 'phase' && d.phase === 'intro') say(TXT.ready, 'wait');
+  if (type === 'phase' && d.phase === 'bar'){ hud.now(d.bar);      // a bar that missed the floor opens the next one with the nudge (amber), else the next prompt
+    if (last === 'notyet') say(TXT.notyet, 'wait'); else if (last !== 'skip') say(TXT.prompts[(d.bar - 1) % TXT.prompts.length], 'gold');
+    if (d.bar > 1 && (d.bar - 1) % 4 === 0) src.next(); }
+  if (type === 'bounce') lights.hit(d.onBeat ? 'on' : 'near');
+  if (type === 'star' || type === 'notyet' || type === 'skip') last = type;
+  if (type === 'star'){ hud.star(); hud.mark(d.bar, 'star'); lights.burst('nose', 'gold', 40); }
+  if (type === 'bonus'){ hud.star(); lights.burst('nose', 'green', 90); card(TXT.bonus, '🎵'); setTimeout(() => card(null), 1200); }
+  if (type === 'notyet') hud.mark(d.bar, 'notyet');
+  if (type === 'skip'){ hud.mark(d.bar, 'skip'); lights.guide('tooClose'); say(L.cantSee, 'wait'); }
+  if (type === 'seen'){ if (d.seen){ lights.guide(null); caption(...phaseCap); } else { lights.guide(guideFor(lastFrame)); caption(L.cantSee, 'wait'); } }
+  if (type === 'end') finish(d);
+}
+
+function finish(d){
+  ended = true; music.pause(); src.stop(); card(null); ring(null); caption(''); lights.clearAll(); rec.end(d, src.state);
+  medalScreen({ ...d, lang, onAgain: () => location.reload(), onBack: () => location.href = 'index.html' + location.search, onSave: () => { rec.save(); $('save').textContent = '✓ ' + L.saved; } });
+}
+
+async function begin(){
+  $('startScr').classList.remove('on');
+  game = createGrooveGame({ pace: +Q.get('bars') > 0 ? { bars: +Q.get('bars') } : fast ? { bars: 8 } : {}, on: onEvent });
+  hud = createHud(game.pace.bars);
+  src = await createSource($('cam'), (frame, t) => {
+    if (ended) return; lastFrame = frame;
+    const k = toJudge(frame); if (k) lights.feed(k);
+    if (doc){ doc(frame); return; }                       // Camera Doctor first — the game isn't running yet
+    if (src?.state.w) game.setSize(src.state.w, src.state.h);
+    rec.frame(frame, t, src?.state); game.feed(frame, t); game.tick(t);
+  });
+  if (!src.state.modelOk) caption(src.state.cameraError ? L.noCamera : L.cantSee, 'wait');
+  src.start();
+  if (Q.get('checked') !== '1' && Q.get('doctor') !== '0') await runDoctor({ lights, lang, onFrameHook: h => doc = h });
+  // the beat clock = the song's own clock: beat n at song time offset + n·60/BPM
+  const now = performance.now() / 1000; let songAt0 = now + game.pace.introS;
+  setTimeout(async () => { music.currentTime = 0; try { await music.play(); songAt0 = performance.now() / 1000 - music.currentTime; } catch {}
+    game.state.beat0 = songAt0 + SONG.offsetS; }, game.pace.introS * 1000);
+  game.start(now, songAt0 + SONG.offsetS);
+  lights.speedGlow(true); lights.beatRing(true, t => game.state.phase === 'bar' || game.state.phase === 'intro' ? game.nextBeat(t) : null, 0.6);
+  setInterval(() => { if (!ended) game.tick(performance.now() / 1000); }, 50);
+}
+$('go').textContent = '▶ ' + L.start; $('go').onclick = begin;
+if (Q.get('autostart') === '1') begin();
+</script>
+</body></html>

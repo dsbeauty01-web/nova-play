@@ -1,0 +1,90 @@
+/* beta/play.css — the ONE stylesheet for the beta launcher and its three games (Freeze · Copy Nova · Groove).
+   Laws: no numbers on screen · amber for waiting / not-yet, mint + gold for success · there is no fail colour. */
+:root{
+  --bg:#140b26; --bg2:#21143d; --ink:#fff; --soft:#d7cdf0;
+  --amber:#ffb45e;           /* waiting / not yet */
+  --mint:#7ddba3;            /* success */
+  --gold:#ffd65a;            /* stars, medals */
+  --cyan:#7df0ff;
+  --radius:22px;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;background:var(--bg);color:var(--ink);font:600 18px/1.4 Nunito,'Baloo 2',system-ui,sans-serif;overflow:hidden}
+[dir=rtl] body,[dir=rtl]{font-family:'Rubik',Nunito,system-ui,sans-serif}
+button{font:inherit;color:inherit;border:0;cursor:pointer}
+
+/* ── stage: the mirrored camera (or replay clip) + the light layer ── */
+#stage{position:fixed;inset:0;background:radial-gradient(ellipse at 50% 30%,var(--bg2),var(--bg) 70%)}
+#cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+#fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6}
+
+/* ── top bar: stars only ── */
+#topbar{position:fixed;top:0;left:0;right:0;z-index:40;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 16px;background:linear-gradient(180deg,rgba(20,11,38,.85),rgba(20,11,38,0))}
+#topbar .back{background:rgba(255,255,255,.12);border-radius:999px;padding:6px 14px;font-size:16px}
+#stars{font-size:clamp(22px,5vw,34px);letter-spacing:2px;min-height:1.2em;text-shadow:0 2px 10px rgba(0,0,0,.6);flex:1;text-align:center;overflow:hidden;white-space:nowrap}
+#stars .pop{display:inline-block;animation:starpop .6s ease-out}
+@keyframes starpop{0%{transform:scale(.2)}60%{transform:scale(1.5)}100%{transform:scale(1)}}
+#dots{display:flex;gap:6px}
+#dots i{width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,.25)}
+#dots i.star{background:var(--gold)} #dots i.skip{background:rgba(255,255,255,.08);outline:2px dashed rgba(255,255,255,.35)} #dots i.notyet{background:var(--amber)}
+#dots i.now{outline:3px solid var(--cyan)}
+
+/* ── caption: what Nova says ── */
+#cap{position:fixed;left:50%;bottom:max(18px,4vh);transform:translateX(-50%);z-index:45;max-width:min(92vw,760px);text-align:center;
+  font:800 clamp(22px,5.2vw,42px)/1.15 'Baloo 2',Nunito,system-ui;padding:12px 22px;border-radius:var(--radius);
+  background:rgba(20,11,38,.72);backdrop-filter:blur(6px);text-shadow:0 2px 12px rgba(0,0,0,.5);transition:opacity .2s}
+#cap:empty{opacity:0}
+#cap.wait{color:var(--amber)} #cap.good{color:var(--mint)} #cap.gold{color:var(--gold)}
+
+/* ── the hold ring: amber while waiting, mint on success (never red) ── */
+#ring{position:fixed;right:16px;top:64px;z-index:44;width:min(22vw,120px);aspect-ratio:1;border-radius:50%;display:none;
+  background:conic-gradient(var(--amber) calc(var(--p,0)*1%),rgba(255,180,94,.18) 0);
+  -webkit-mask:radial-gradient(circle,transparent 58%,#000 60%);mask:radial-gradient(circle,transparent 58%,#000 60%)}
+#ring.on{display:block} #ring.ok{background:var(--mint)}
+
+/* ── big centre card (animal / pose name) ── */
+#card{position:fixed;left:50%;top:8vh;transform:translateX(-50%) scale(.6);opacity:0;z-index:42;text-align:center;pointer-events:none;
+  transition:transform .15s,opacity .15s;font:800 clamp(34px,9vw,84px)/1 'Baloo 2',Nunito,system-ui;text-shadow:0 4px 24px rgba(0,0,0,.6)}
+#card.on{opacity:1;transform:translateX(-50%) scale(1)}
+#card .emo{display:block;font-size:1.1em}
+
+/* ── full screens: start, medal ── */
+.screen{position:fixed;inset:0;z-index:90;display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+  padding:24px 16px;text-align:center;background:rgba(20,11,38,.92)}
+.screen.on{display:flex}
+.screen h1{font:800 clamp(34px,8vw,64px)/1.05 'Baloo 2',Nunito,system-ui;color:var(--gold)}
+.screen p{color:var(--soft);font-size:clamp(17px,3.6vw,22px);max-width:640px}
+.big{background:linear-gradient(135deg,#ffd65a,#ffb45e);color:#2a1700;border-radius:999px;padding:16px 40px;font:800 clamp(20px,5vw,28px) 'Baloo 2',Nunito;box-shadow:0 8px 30px rgba(255,180,94,.35)}
+.big.alt{background:rgba(255,255,255,.12);color:var(--ink);box-shadow:none}
+.row{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+#medal{font-size:clamp(90px,26vw,160px);line-height:1}
+#medalStars{font-size:clamp(26px,7vw,44px);letter-spacing:4px;max-width:92vw;word-break:break-all}
+.save{background:rgba(255,255,255,.1);border-radius:999px;padding:8px 18px;font-size:15px;color:var(--soft)}
+
+/* ── launcher ── */
+.launch{position:fixed;inset:0;overflow:auto;display:flex;flex-direction:column;align-items:center;gap:16px;padding:28px 16px 40px}
+.launch h1{font:800 clamp(38px,10vw,72px)/1 'Baloo 2',Nunito;color:var(--gold);margin-top:12px}
+.games{display:grid;gap:16px;width:100%;max-width:720px}
+.game{display:flex;align-items:center;gap:18px;width:100%;padding:22px 24px;border-radius:var(--radius);background:var(--bg2);border:2px solid #3a2a63;text-align:start;transition:transform .12s,border-color .12s}
+.game:hover,.game:focus-visible{border-color:var(--gold);transform:translateY(-2px)}
+.game .emo{font-size:clamp(44px,12vw,64px)}
+.game b{display:block;font:800 clamp(26px,7vw,36px)/1.1 'Baloo 2',Nunito;color:var(--gold)}
+.game span{color:var(--soft);font-size:16px}
+.lang{display:flex;gap:6px;background:rgba(255,255,255,.08);border-radius:999px;padding:4px}
+.lang button{padding:6px 14px;border-radius:999px;background:none}
+.lang button[aria-pressed=true]{background:var(--gold);color:#2a1700}
+#doctor{position:fixed;inset:0;z-index:80;display:none}
+#doctor.on{display:block}
+#doctor .msg{position:absolute;left:50%;top:12vh;transform:translateX(-50%);width:min(92vw,640px);text-align:center;font:800 clamp(22px,5.5vw,38px)/1.15 'Baloo 2',Nunito;
+  padding:14px 20px;border-radius:var(--radius);background:rgba(20,11,38,.75)}
+#doctor .msg.good{color:var(--mint)} #doctor .msg.wait{color:var(--amber)}
+#doctor .outline{position:absolute;left:50%;top:50%;transform:translate(-50%,-46%);height:min(70vh,120vw);aspect-ratio:1/2.4;opacity:.22;pointer-events:none;
+  background:no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 240'%3E%3Cg fill='none' stroke='white' stroke-width='3' stroke-dasharray='6 5'%3E%3Ccircle cx='50' cy='22' r='16'/%3E%3Cpath d='M22 52h56l10 70h-14l-6-48v66l8 96H62l-12-80-12 80H24l8-96V74l-6 48H12z'/%3E%3C/g%3E%3C/svg%3E")}
+#doctor[data-state=ok] .outline{opacity:.5;filter:drop-shadow(0 0 12px var(--mint))}
+#doctor .go{position:absolute;left:50%;bottom:6vh;transform:translateX(-50%)}
+.bar{position:absolute;left:50%;bottom:calc(6vh + 84px);transform:translateX(-50%);width:min(70vw,360px);height:8px;border-radius:8px;background:rgba(255,255,255,.15);overflow:hidden}
+.bar i{display:block;height:100%;width:100%;background:var(--mint);transform:scaleX(0);transform-origin:left;transition:transform .25s linear}
+[dir=rtl] .bar i{transform-origin:right}
+
+@media (max-width:520px){ #ring{top:58px} #card{top:7vh;font-size:30px} }

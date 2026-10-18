@@ -1,0 +1,419 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nova · Nova Says</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@700;800&family=Nunito:wght@600;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"></script>
+<style>
+:root{--gold:#ffc23e;--gold-hot:#ffe27e;--hoodie:#7c5cbf;--gotcha:#b98cff;--ice:#aee8ff;--ink:#f3eefb}
+html,body{margin:0;height:100%;background:radial-gradient(130% 130% at 50% 12%,#241046 0%,#140a2c 55%,#080513 100%);font-family:Nunito,system-ui;color:var(--ink);overflow:hidden}
+#stage{position:fixed;inset:0;display:flex}
+/* HER 60 / KID 40; talking phases she widens to 66 */
+#novaWrap{position:relative;flex:0 0 60%;overflow:hidden;background:#0c0720;transition:flex-basis .5s ease}
+#stage[data-phase=intro] #novaWrap,#stage[data-phase=between] #novaWrap,#stage[data-phase=ending] #novaWrap{flex-basis:66%}
+#novaMain{position:absolute;left:50%;top:0;height:100%;width:auto;transform:translateX(-50%);z-index:2}
+#novaAmbient{position:absolute;left:50%;top:50%;height:110%;width:auto;transform:translate(-50%,-50%) scaleX(2.2);filter:blur(28px) brightness(.55);z-index:1}
+#camWrap{position:relative;flex:1 1 40%;overflow:hidden;background:#0c0720}
+#usercam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+#fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:6}
+/* V2 IDENTITY (§8): purple "sneaky spy" vignette during rounds — not the freeze room-pink */
+#camWrap::after{content:"";position:absolute;inset:0;z-index:5;pointer-events:none;background:radial-gradient(120% 120% at 50% 45%,transparent 58%,rgba(48,16,84,.55) 100%)}
+#stage[data-phase=game] #novaWrap::after{content:"";position:absolute;inset:0;z-index:3;pointer-events:none;background:radial-gradient(120% 120% at 50% 45%,transparent 62%,rgba(48,16,84,.5) 100%)}
+#badge{position:absolute;left:14px;top:14px;z-index:8;background:rgba(12,7,32,.6);color:#fff;padding:5px 14px;border-radius:999px;font-weight:800;font-size:13px}
+#sneaky{position:absolute;right:14px;top:14px;z-index:8;background:rgba(48,16,84,.75);color:var(--gotcha);padding:5px 14px;border-radius:999px;font-weight:800;font-size:13px;border:1px solid rgba(185,140,255,.5)}
+#banner{position:fixed;top:0;left:0;right:0;z-index:99;background:#8d2f4b;color:#fff;font-weight:800;text-align:center;padding:10px;display:none}
+#hud{position:fixed;top:2vh;left:0;right:0;display:flex;gap:14px;justify-content:center;align-items:center;z-index:50}
+#phaseTag{background:var(--hoodie);color:#fff;border-radius:999px;padding:5px 16px;font-weight:800}
+#score{font-family:'Baloo 2';font-size:44px;font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums;text-shadow:0 2px 16px rgba(0,0,0,.6)}
+#streak{font-weight:800;font-size:16px;background:rgba(12,7,32,.55);border-radius:999px;padding:6px 12px;color:var(--gold-hot)}
+#tricks{font-weight:800;font-size:18px;background:rgba(12,7,32,.55);border-radius:999px;padding:6px 14px;color:var(--gotcha)}
+#dots{display:flex;gap:8px}#dots i{width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.18)}#dots i.on{background:var(--gold);box-shadow:0 0 10px var(--gold)}#dots i.now{outline:2px solid var(--gold-hot)}
+#pause,#exit{position:fixed;top:2vh;z-index:60;background:rgba(12,7,32,.55);color:#fff;border:0;border-radius:12px;padding:8px 12px;font-size:16px}#pause{right:64px}#exit{right:14px}
+#gate,#card,#finale{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;background:rgba(8,5,19,.7);z-index:90;backdrop-filter:blur(3px)}
+#gate button,#card button,#finale button{font:800 26px 'Baloo 2';padding:18px 44px;border:0;border-radius:18px;background:var(--gold);color:#2a2140;box-shadow:0 10px 30px rgba(255,194,62,.4);cursor:pointer}
+.cardTitle{font-family:'Baloo 2';font-weight:800;font-size:clamp(26px,5vw,44px);text-align:center;text-shadow:0 2px 16px rgba(0,0,0,.6)}
+.stars{font-size:44px;letter-spacing:8px;color:var(--gold)}
+.roundRow{display:flex;gap:14px}.roundCard{background:rgba(12,7,32,.7);border:2px solid rgba(255,194,62,.4);border-radius:16px;padding:12px 18px;text-align:center;font-weight:800}
+#presence{position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:rgba(8,5,19,.62);backdrop-filter:blur(3px)}
+#presence .pring{width:132px;height:132px;border-radius:50%;background:conic-gradient(var(--ice) calc(var(--p,0)*360deg),rgba(255,255,255,.14) 0);-webkit-mask:radial-gradient(circle,transparent 56px,#000 57px);mask:radial-gradient(circle,transparent 56px,#000 57px);transition:background .2s}
+#presence.ok .pring{background:conic-gradient(#7CFFB2 calc(var(--p,0)*360deg),rgba(124,255,178,.18) 0)}
+#presence .ptxt{font-family:'Baloo 2';font-weight:800;font-size:clamp(22px,4.4vw,34px);text-align:center;text-shadow:0 2px 16px rgba(0,0,0,.6);max-width:80vw}
+#presence .psub{font-weight:700;font-size:15px;color:#c7bde6}
+.hidden{display:none!important}
+</style></head><body>
+<div id="banner"></div>
+<div id="stage" data-phase="intro">
+  <div id="novaWrap"><video id="novaAmbient" autoplay muted playsinline></video><video id="novaMain" autoplay muted playsinline></video><div id="badge">Talking</div><div id="sneaky">🕵️ SNEAKY</div></div>
+  <div id="camWrap"><video id="usercam" autoplay muted playsinline></video><canvas id="fx"></canvas></div>
+</div>
+<div id="hud"><div id="phaseTag">NOVA SAYS</div><div id="score">0</div><div id="streak">streak 0</div><div id="tricks">🕵️ 0</div><div id="dots"><i></i><i></i><i></i><i></i></div></div>
+<button id="pause">⏸</button><button id="exit">✕</button>
+<div id="presence" class="hidden"><div class="pring" style="--p:0"></div><div class="ptxt">Step back — I need to see your arms 🙆</div><div class="psub"></div></div>
+<div id="card" class="hidden"></div>
+<div id="finale" class="hidden"></div>
+<div id="gate"><button id="start">▶ Let's play</button></div>
+<script type="module">
+// NOVA-SAYS-V2 (beta-b0.25-novasays2) — rhythm game, not a chat. Every command owns its
+// bar(s) of the SneakyBed groove; command lines are PRE-RECORDED in her voice (founder-
+// approved law exception — they are beat-locked sound effects); live V2V stays for
+// intro / between rounds / BOSS round / ending. Nothing loaded from the Freeze game's asset dir (§8).
+import { MoverEngine } from '/shared/mover-engine.js';
+import { RULES } from '/shared/mover-rules.js';
+import { LightEngine } from '/shared/light-engine.js';
+import { startPose } from '/shared/pose-engine.js';
+import { attachNova, setBody, routeVoice, note, onHerAudio } from '/shared/nova-bridge.js';
+import { pulseSend } from '/shared/pulse.js';
+import { CMDS, ROUNDS, buildRound, scoreStep, starsFor, parseCommand, clipName, ALL_CLIPS } from '/beta/novasays.js';
+import { SneakyBed } from '/beta/novasays-music.js';
+
+const MIRROR = true, TIER = 'kids';
+const HE = /[?&]lang=he/.test(location.search), LANG = HE ? 'he' : 'en';
+const TEST = /[?&]test=1/.test(location.search);
+// TRICK TELL: the guide light glows on tricks too, so the words stay the only tell. ?tricklight=0 reverts.
+const TRICK_LIGHT = !/[?&]tricklight=0/.test(location.search);
+const BODY = { talk:'nova_idle2', groove:'nova_idlegroove_v2' };    // §5: she GROOVES the whole round
+const stage = document.getElementById('stage');
+const E = new MoverEngine(), L = new LightEngine(document.getElementById('fx'), { tier:TIER, mirror:MIRROR });
+const audio = { lastOnset:null };                                   // clap onset fusion (page-side detector still [CLI-FILL] absent)
+const ctx2 = { audio };
+
+// ── WebAudio clock (clock law: everything fires off actx.currentTime) ───────
+const actx = new (window.AudioContext || window.webkitAudioContext)();
+const bed = new SneakyBed(actx);
+const clips = {};                                                   // name → AudioBuffer
+let clipsStubbed = false;
+async function loadClips() {
+  const needed = ALL_CLIPS.filter(n => n.endsWith(`_${LANG}.mp3`) || n === 'giggle.mp3' || n === `gotcha_${LANG}.mp3`);
+  const missing = [];
+  for (const n of needed) {
+    try {
+      const r = await fetch(`/audio/says/${n}`, { cache:'force-cache' });
+      if (!r.ok) { missing.push(n); continue; }
+      clips[n] = await actx.decodeAudioData(await r.arrayBuffer());
+    } catch (_) { missing.push(n); }
+  }
+  if (missing.length && TEST) {                                     // harness offline: stub buffers, LOGGED (not silent)
+    clipsStubbed = true; tlog('clips', 'stub:' + missing.length);
+    for (const n of missing) clips[n] = actx.createBuffer(1, Math.round(actx.sampleRate * 1.0), actx.sampleRate);
+    return [];
+  }
+  return missing;                                                   // live mode: any missing clip = red banner, refuse start
+}
+function play(buf, at = 0) { const s = actx.createBufferSource(); s.buffer = buf; s.connect(actx.destination); s.start(Math.max(at, actx.currentTime)); return s; }
+
+// scheduler: callbacks fire from the WebAudio clock (25ms lookahead loop — never setTimeout math)
+const _sched = [];
+function scheduleAt(t, fn, tag) { _sched.push({ t, fn, tag }); }
+function _drain() { const now = actx.currentTime;
+  for (let i = _sched.length - 1; i >= 0; i--) if (_sched[i].t <= now + 0.012) { const s = _sched.splice(i, 1)[0]; try { s.fn(now); } catch (e) { console.warn('[SCHED]', e); } }
+}
+setInterval(_drain, 10); (function rafDrain(){ _drain(); requestAnimationFrame(rafDrain); })();
+
+// ── test harness ────────────────────────────────────────────────────────────
+const T = { log: [] };
+if (TEST) window.__test = {
+  log: T.log,
+  pose: k => onFrame(k),
+  kid: text => window.dispatchEvent(new CustomEvent('nova:kid', { detail:text })),
+  consent: () => window.dispatchEvent(new Event('nova:consent')),
+  state: () => ({ phase, round: R0?.n, score, streak, tricksCaught, cmdId: curCmd?.id, trick: curTrick, inWindow, lightsActive: L.active(), bar: bed.t0 != null ? bed.barAt(actx.currentTime) : -1 }),
+  start: () => document.getElementById('start').click(),
+};
+const tlog = (ev, d) => { if (TEST) T.log.push({ t: actx.currentTime, ev, d }); };
+
+// ── live V2V (intro / between / boss / ending ONLY — §7, v1's proven code) ──
+function sayLive(line) {
+  tlog('say', line); note(`say exactly: "${line}"`);
+  return new Promise(res => {
+    let done = false; const fin = () => { if (!done) { done = true; res(); } };
+    addEventListener('nova:said', fin, { once:true });
+    setTimeout(fin, TEST ? 60 : 5000);
+  });
+}
+function waitKidCommand(ms) {
+  return new Promise(res => {
+    let done = false;
+    const h = e => { if (!done) { done = true; removeEventListener('nova:kid', h); res({ text: e.detail || '' }); } };
+    addEventListener('nova:kid', h);
+    setTimeout(() => { if (!done) { done = true; removeEventListener('nova:kid', h); res(null); } }, TEST ? 120 : ms);
+  });
+}
+const sleep = ms => new Promise(r => setTimeout(r, TEST ? Math.min(ms, 40) : ms));
+let _frameWaiters = [];
+const nextPoseFrame = () => new Promise(r => _frameWaiters.push(r));
+
+// ── phase machine (routeVoice is the only voice router) ─────────────────────
+let phase = 'intro';
+function setPhase(p) {
+  phase = p; stage.dataset.phase = (p === 'boss') ? 'game' : p;
+  document.getElementById('badge').textContent = p === 'game' ? 'Watching' : p === 'hold' ? 'FREEZE!' : p === 'boss' ? 'Boss: YOU' : 'Talking';
+  if (p === 'intro' || p === 'between' || p === 'ending' || p === 'boss') { routeVoice('engine'); setBody(BODY.talk); }
+  if (p === 'game') { routeVoice('air'); }                          // her recorded lines ride the page audio; engine gets nothing
+  if (p === 'hold') { routeVoice('mute'); }
+  tlog('phase', p);
+}
+// §5: hard swap to the gesture for ~0.9 bar, back to the groove at the bar line (beat masks both cuts)
+function playGesture(id, durS) { if (!id) return; setBody(id); tlog('body', id); scheduleAt(actx.currentTime + (durS || bed.bar * 0.9), () => { if (phase === 'game') { setBody(BODY.groove); tlog('body', BODY.groove); } }); }
+async function playGestureFull(id) { if (!id) return; setBody(id); tlog('body', id); await sleep(4000); setBody(BODY.talk); tlog('body', BODY.talk); }
+
+// ── §6 lights (approved language, kids tier, b0.22 floors) ──────────────────
+function lightFor(c, windowMs, chain) {
+  tlog('light', c.id + (chain ? '+' + chain.id : ''));
+  const one = (cc) => {
+    if (cc.light === 'clap') { L.clapCue({ windowMs, leadMs: 150 }); return; }
+    if (cc.light === 'ice')  { L.freezeStart(windowMs + (cc.hold || 0) * 1000); return; }
+    for (const j of cc.light.joints) L.cue({ joint: j, dir: cc.light.dir, windowMs, leadMs: 150 });
+  };
+  one(c); if (chain) one(chain);                                    // chains show both cues stacked
+}
+function lightHit(c, pts) {
+  if (c.light === 'clap') { L.clapHit(); return; }
+  if (c.light === 'ice')  { L.freezeEnd(true); return; }
+  L.hit(c.light.joints[0], 'good', pts || null);
+}
+
+// ── HUD ─────────────────────────────────────────────────────────────────────
+let score = 0, streak = 0, tricksCaught = 0, roundStats = null, R0 = null, curCmd = null, curTrick = false, inWindow = false;
+const roundResults = [];
+const hud = {
+  score: v => document.getElementById('score').textContent = v,
+  streak: v => document.getElementById('streak').textContent = 'streak ' + v,
+  tricks: v => document.getElementById('tricks').textContent = '🕵️ ' + v,
+  tag: t => document.getElementById('phaseTag').textContent = t,
+  dots: n => document.querySelectorAll('#dots i').forEach((el, i) => { el.classList.toggle('on', i < n - 1); el.classList.toggle('now', i === n - 1); }),
+};
+const emitFact = o => note('fact: ' + JSON.stringify(o));           // silent context — never unlocks generation
+
+// ── §3 the beat-locked round loop ───────────────────────────────────────────
+async function playRound(R) {
+  R0 = R; hud.tag(R.label); hud.dots(R.n); roundStats = { hits:0, fast:0, trickHeld:0, gotcha:0 };
+  if (R.boss) return bossRound(R);
+  setPhase('game'); bed.duck(false); setBody(BODY.groove); tlog('body', BODY.groove);
+  const seq = buildRound(R), bar = bed.bar;
+  let at = bed.nextBarStart(actx.currentTime) + bar;                // first command on the next bar
+  for (const step of seq) {
+    const c = step.cmd; curCmd = c; curTrick = step.trick;
+    const line = clips[clipName(step, LANG)];
+    // BAR A — the call: line on the downbeat, demo on the same beat, light one beat later.
+    // TRICK TELL (founder ruling 2026-09-23). The spec had tricks skip the gesture swap, arguing
+    // "the groove continues — identical look to the second BEFORE a real command". In play that
+    // reasoning breaks: DURING the call a real command means she moves and a trick means she
+    // grooves, so a child wins by watching her body and never has to listen. The game stops
+    // being Nova Says. She now performs the demo on EVERY command — identical body, the words
+    // are the only tell, exactly as the clips were recorded (real and trick share one delivery).
+    // The guide light was the same class of tell, and worse: it fired real-only ~0.5s BEFORE the
+    // scoring window even opened, so waiting for the light beat listening outright. It now lights
+    // on tricks too. ?tricklight=0 restores the old real-only light if the founder's eye prefers it.
+    scheduleAt(at, (now) => { play(line, at); tlog('cmd', { id: c.id, trick: step.trick, chain: step.chain?.id || null, at, fired: now }); if (c.demo) playGesture(c.demo, bar * 0.9); }, 'cmd');
+    if (!step.trick || TRICK_LIGHT) scheduleAt(at + bed.beat, () => lightFor(c, (R.barsPerCmd - 0.5) * bar * 1000, step.chain));
+    const winStart = at + Math.min(1.4, line.duration), winEnd = at + R.barsPerCmd * bar;
+    inWindow = false;
+    const result = await detectWindow(step, winStart, winEnd);
+    resolve(step, result, R, (winEnd - winStart) * 1000);
+    L.clearAll(); curCmd = null; curTrick = false;
+    at += R.barsPerCmd * bar;                                       // next command lands exactly on the grid — no gaps, no drift
+    // [CLI-FILL] GRID REALIGN: a freeze HOLD can run past its bar (spec allows the hold to
+    // finish); if the next slot already passed, snap to the next bar line instead of firing late.
+    if (actx.currentTime > at + 0.02) { at = bed.nextBarStart(actx.currentTime); tlog('realign', at); }
+  }
+  setBody(BODY.talk); tlog('body', BODY.talk);
+  await endRound(R);
+}
+async function detectWindow(step, t0, t1) {
+  // the window closes 60ms BEFORE the next downbeat: a miss must never spill past the slot
+  const c = step.cmd; let got = null, gotChain = !step.chain, tHit = null;
+  while (actx.currentTime < t1 - 0.06) {
+    await nextPoseFrame();
+    if (actx.currentTime < t0) continue;
+    inWindow = true;
+    const r = c.rule(E, ctx2);
+    if (r?.hit && !got) { got = r; tHit = actx.currentTime; if (c.hold) got.held = await holdStill(c.hold, t1); }
+    if (step.chain && !gotChain && step.chain.rule(E, ctx2)?.hit) gotChain = true;
+    if (got && gotChain) break;
+  }
+  inWindow = false;
+  return got ? { hit:true, ms:(tHit - t0) * 1000, held: got.held !== false, chainDone: gotChain } : null;
+}
+async function holdStill(seconds, tEnd) {                           // freeze: stay a statue (hard mute)
+  setPhase('hold');
+  const t0 = actx.currentTime; let broke = false, samples = 0;
+  while (actx.currentTime - t0 < seconds && actx.currentTime < (tEnd ?? Infinity) + seconds) {
+    await nextPoseFrame(); samples++;
+    if (!RULES.freeze(E, 0.12).still) { broke = true; L.freezeBreak(); break; }
+  }
+  setPhase('game');
+  return !broke && samples > (TEST ? 1 : 5);
+}
+
+// ── §4 resolution (pure scoring in the lib; sounds/lights here) ─────────────
+function resolve(step, r, R, span) {
+  const c = step.cmd;
+  const out = scoreStep(step, r, span, streak); streak = out.streak;
+  tlog('resolve', { cmd: c.id, trick: step.trick, chain: step.chain?.id || null, event: out.event, pts: out.pts });
+  if (out.event === 'hit') {
+    score += out.pts; roundStats.hits++; if (out.fast) roundStats.fast++;
+    lightHit(c, out.pts); if (step.chain && out.chainDone) lightHit(step.chain, 0);
+    if (out.fast) { const h = L.P('head'); if (h) L.flyUp(h, 'QUICK!'); }
+    L.audio.tick(streak);
+  } else if (out.event === 'miss') {
+    L.softFade();                                                    // silence — no words on a miss
+  } else if (out.event === 'gotcha') {
+    roundStats.gotcha++; L.gotchaRipple();
+    play(clips['giggle.mp3']); play(clips[`gotcha_${LANG}.mp3`], actx.currentTime + 0.25);   // the laugh lands instantly (pre-recorded)
+  } else {                                                           // trickHeld
+    score += out.pts; roundStats.trickHeld++; tricksCaught++;
+    const h = L.P('head'); if (h) L.flyUp(h, 'SNEAKY!'); L.audio.tick(streak);
+    hud.tricks(tricksCaught);
+  }
+  hud.score(score); hud.streak(streak);
+  emitFact({ fact:'ns', id: c.id, trick: step.trick, hit: !!r?.hit, streak });
+}
+
+// ── §7 BOSS ROUND (live V2V — v1's proven code on the 7 v2 commands) ────────
+async function bossRound(R) {
+  setPhase('boss'); bed.duck(true);
+  await sayLive(HE ? 'עכשיו התור שלך להיות הבוס! תגידו לי מה לעשות — עם נובה אומרת אם אתם מתכוונים!'
+                   : "YOUR turn to be the boss! Tell ME what to do — say 'Nova says' if you mean it!");
+  let reinvited = false;
+  for (let i = 0; i < R.count; i++) {
+    const turn = await waitKidCommand(8000);
+    if (!turn) { if (!reinvited) { reinvited = true; await sayLive(HE ? 'קחו את הזמן, בוס.' : 'Take your time, boss.'); } continue; }
+    reinvited = false;
+    const parsed = parseCommand(turn.text);
+    tlog('boss', { text: turn.text, parsed: parsed && { id: parsed.cmd.id, novaSays: parsed.novaSays } });
+    if (!parsed) { await sayLive(HE ? 'אוו, את זה אני לא מכירה — נסו נובה אומרת לקפוץ!' : "Ooh, I don't know that one — try 'Nova says jump'!"); continue; }
+    if (parsed.novaSays) {
+      await sayLive(HE ? `נובה אומרת ${parsed.cmd.sayHE} — אוקיי!` : `Nova says ${parsed.cmd.sayEN} — okay!`);
+      if (parsed.cmd.demo) await playGestureFull(parsed.cmd.demo);
+      score += 10; L.hit('shoulderC', 'good', 10); roundStats.hits++;
+    } else {
+      await sayLive(HE ? 'לא אמרתם נובה אומרת — אני לא זזה! חה!' : "You didn't say Nova says — I'm NOT moving! Ha!");
+      L.gotchaRipple(); score += 15; roundStats.trickHeld++;
+      const h = L.P('head'); if (h) L.flyUp(h, 'BOSS!');
+    }
+    hud.score(score);
+  }
+  await endRound(R);
+}
+
+// ── between rounds (lips, ≤3 lines from facts) + consent gate ───────────────
+async function endRound(R) {
+  const stars = starsFor(roundStats, R.count);
+  roundResults.push({ n: R.n, label: R.label, stars, ...roundStats });
+  L.audio.ding(); tlog('endRound', { n: R.n, stars, ...roundStats });
+  if (R.n === ROUNDS.length) return;
+  setPhase('between'); bed.duck(true);
+  const next = ROUNDS[R.n];
+  const sneakier = roundStats.gotcha >= 3 ? ` They got GOTCHA'd ${roundStats.gotcha} times — say "you're getting sneakier — ${roundStats.gotcha} tricks got you, let's catch them!"` : '';
+  note(`ending-round facts: round=${R.n} hits=${roundStats.hits} fast=${roundStats.fast} tricksHeld=${roundStats.trickHeld} gotchas=${roundStats.gotcha} stars=${stars}.` + sneakier +
+       ` Say ≤3 lines: one fact from these numbers (e.g. "you caught ${roundStats.trickHeld} of my tricks!"), one next-cue for "${next.label}", then "ready for round ${next.n}?" and WAIT.`);
+  await choiceGate(`${'★'.repeat(stars)}${'☆'.repeat(3 - stars)}`, `Round ${R.n} done!`, `▶ Round ${next.n}!`);
+}
+function choiceGate(stars, title, btnLabel) {                        // consent gate: she never self-advances
+  return new Promise(res => {
+    const card = document.getElementById('card');
+    card.innerHTML = `<div class="cardTitle">${title}</div><div class="stars">${stars}</div><button id="go">${btnLabel}</button>`;
+    card.classList.remove('hidden');
+    const fin = () => { card.classList.add('hidden'); removeEventListener('nova:consent', fin); res(); };
+    card.querySelector('#go').onclick = fin;
+    addEventListener('nova:consent', fin, { once:true });
+    if (TEST) setTimeout(fin, 100);
+  });
+}
+
+// ── finale: ending trio + PULSE ─────────────────────────────────────────────
+async function finale() {
+  setPhase('ending'); bed.stop(); hud.tag('NOVA SAYS');
+  const best = roundResults.reduce((a, b) => (b.stars > a.stars ? b : a), roundResults[0]);
+  note(`ending facts: score=${score} tricksCaught=${tricksCaught} bestRound="${best.label}" stars=${JSON.stringify(roundResults.map(r => r.stars))}. ` +
+       `Say the trio from these real numbers, then "did you have fun? tell me anything!", then a named goodbye.`);
+  pulseSend({ game:'novasays2', score, tricksCaught, rounds: roundResults });
+  tlog('pulse', { score, tricksCaught });
+  const rows = roundResults.map(r => `<div class="roundCard">R${r.n}<br><span class="stars" style="font-size:22px;letter-spacing:2px">${'★'.repeat(r.stars)}${'☆'.repeat(3 - r.stars)}</span></div>`).join('');
+  const f = document.getElementById('finale');
+  f.innerHTML = `<div class="cardTitle">You played NOVA SAYS!</div><div style="font-family:'Baloo 2';font-size:44px;font-weight:800;color:var(--gold)">${score}</div>
+    <div class="roundRow">${rows}</div><div style="font-weight:800">🕵️ tricks caught: ${tricksCaught}</div><button onclick="location.reload()">🔁 PLAY AGAIN</button>`;
+  f.classList.remove('hidden');
+}
+async function runGame() { for (const R of ROUNDS) await playRound(R); await finale(); }
+
+// ── boot: gate → preflight (clips + bakes, red banner) → presence → intro ───
+const banner = m => { const b = document.getElementById('banner'); b.textContent = m; b.style.display = 'block'; };
+let podUp = false;
+document.getElementById('start').onclick = async () => {
+  document.getElementById('gate').classList.add('hidden');
+  if (actx.state === 'suspended') await actx.resume().catch(() => {});
+  if (!TEST) try {
+    const cam = document.getElementById('usercam');
+    cam.srcObject = await navigator.mediaDevices.getUserMedia({ video:{ width:960, height:720 }, audio:false });
+    await cam.play().catch(() => {});
+  } catch (e) { document.getElementById('badge').textContent = 'camera blocked: ' + (e && e.name || 'error'); }
+  try { const h = await fetch('/health', { cache:'no-store' }); podUp = h.ok; } catch (_) { podUp = false; }
+  const missingClips = await loadClips();                            // §STEP-0: every clip present or refuse
+  if (missingClips.length) { banner(`⛔ missing voice clip${missingClips.length > 1 ? 's' : ''}: ${missingClips.slice(0, 4).join(', ')}${missingClips.length > 4 ? '…' : ''} — cannot start`); return; }
+  if (podUp) {
+    const need = [BODY.talk, BODY.groove, ...CMDS.filter(c => c.demo).map(c => c.demo)];
+    let missing = need;
+    try { const r = await fetch(`/avatar_check?ids=${need.join(',')}`, { cache:'no-store' }); if (r.ok) missing = (await r.json()).missing; } catch (_) {}
+    if (missing.length) { banner(`⛔ missing avatar bake${missing.length > 1 ? 's' : ''}: ${missing.join(', ')} — cannot start`); return; }
+    try { await attachNova({ intro:'novasays', onVideo: v => { document.getElementById('novaMain').srcObject = v; document.getElementById('novaAmbient').srcObject = v; } }); }
+    catch (e) { banner('⛔ pod attach failed: ' + (e && e.message || 'error')); return; }
+  } else if (!TEST) {
+    document.getElementById('badge').textContent = 'no pod: lights-only';
+  }
+  E.startCal();
+  awaitingPresence = true; document.getElementById('presence').classList.remove('hidden');
+};
+let _introStarted = false;
+function proceedToIntro() {
+  if (_introStarted) return; _introStarted = true;
+  document.getElementById('presence').classList.add('hidden');
+  setPhase('intro');
+  note('fact: persona: NOVA SAYS game. You are SNEAKY and delighted. Between rounds and in the boss round speak the lines you are staged; ' +
+       'GOTCHA is a laugh WITH the kid, never a scold. Between rounds: ≤3 lines from the facts. Never negative words at the kid.');
+  const safety = (parseInt(new URLSearchParams(location.search).get('auto'), 10) || 12) * 1000;
+  setTimeout(() => { if (phase === 'intro') begin(); }, TEST ? 150 : safety);
+}
+addEventListener('nova:consent', () => { if (phase === 'intro') begin(); });
+let _begun = false;
+function begin() { if (_begun) return; _begun = true; E.finishCal(); bed.start(actx.currentTime + 0.1); tlog('bed', { t0: actx.currentTime + 0.1, bar: bed.bar }); runGame(); }
+
+// presence gate — shoulders + wrists visible ≥1s
+let awaitingPresence = false, _presT0 = 0;
+function updatePresence(k) {
+  const need = ['lShoulder','rShoulder','lWrist','rWrist'];
+  const seen = need.filter(n => k[n] && (k[n].vis ?? 0) > 0.4).length;
+  const el = document.getElementById('presence'), now = performance.now();
+  if (seen >= 4) {
+    if (!_presT0) _presT0 = now; const held = now - _presT0;
+    el.classList.add('ok'); el.querySelector('.pring').style.setProperty('--p', Math.min(1, held / 1000));
+    el.querySelector('.ptxt').textContent = 'Perfect — hold it';
+    if (held >= (TEST ? 60 : 1000)) { awaitingPresence = false; proceedToIntro(); }
+  } else {
+    _presT0 = 0; el.classList.remove('ok'); el.querySelector('.pring').style.setProperty('--p', 0);
+    el.querySelector('.ptxt').textContent = 'Step back — I need to see your arms 🙆';
+    el.querySelector('.psub').textContent = 'I can see ' + seen + '/4 (shoulders · wrists)';
+  }
+}
+onHerAudio({ playing: () => bed.duck(true), ended: () => { if (phase === 'game') bed.duck(false); } });
+
+// ── pose loop + cover remap ─────────────────────────────────────────────────
+const _cam = document.getElementById('usercam'), _panel = document.getElementById('camWrap');
+function coverRemap(out) {
+  const vw = _cam.videoWidth || 640, vh = _cam.videoHeight || 480, cw = _panel.clientWidth || 1, ch = _panel.clientHeight || 1;
+  const s = Math.max(cw / vw, ch / vh), dw = vw * s, dh = vh * s, ox = (cw - dw) / 2, oy = (ch - dh) / 2;
+  const o = {};
+  for (const [n, j] of Object.entries(out)) {
+    if (!j || typeof j.x !== 'number') continue;
+    const nx = j.x > 2 ? j.x / vw : j.x, ny = j.y > 2 ? j.y / vh : j.y;
+    o[n] = { x: (ox + nx * dw) / cw, y: (oy + ny * dh) / ch, dir: j.dir };
+  }
+  return o;
+}
+function onFrame(k) {
+  const out = E.update(k); L.setJoints(coverRemap(out));
+  if (awaitingPresence) { updatePresence(k); return; }
+  const ws = _frameWaiters; _frameWaiters = []; for (const r of ws) r();
+}
+if (!TEST) startPose(_cam, onFrame);
+document.getElementById('pause').onclick = () => { bed.g.gain.value = bed.g.gain.value > 0.01 ? 0 : 0.32; };
+document.getElementById('exit').onclick = () => location.href = '/';
+</script></body></html>

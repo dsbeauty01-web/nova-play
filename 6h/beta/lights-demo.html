@@ -1,0 +1,119 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nova Light Engine — demo</title>
+<style>
+  html,body{margin:0;height:100%;background:radial-gradient(120% 120% at 50% 20%,#3a1d6e 0%,#1a0b33 55%,#0b0618 100%);overflow:hidden;font-family:"Baloo 2",system-ui,sans-serif}
+  #stage{position:fixed;inset:0}
+  #figure{position:absolute;inset:0;z-index:1}      /* the faint body silhouette */
+  #fx{position:absolute;inset:0;z-index:2}          /* the light engine canvas */
+  #cap{position:fixed;left:0;right:0;bottom:7vh;text-align:center;z-index:3;color:#fff;
+    font-weight:800;font-size:clamp(22px,5vw,40px);text-shadow:0 2px 20px rgba(0,0,0,.5);letter-spacing:.01em}
+  #tag{position:fixed;top:14px;left:14px;z-index:3;color:#ffdf7e;font-weight:700;font-size:13px;
+    background:rgba(10,6,25,.6);padding:4px 10px;border-radius:8px}
+  #chip{position:fixed;bottom:10px;left:10px;z-index:3;background:#7c5cbf;color:#fff;padding:2px 9px;border-radius:8px;font:600 11px/1 "Nunito",sans-serif}
+</style></head>
+<body>
+<div id="stage">
+  <canvas id="figure"></canvas>
+  <canvas id="fx"></canvas>
+</div>
+<div id="tag">NOVA LIGHT ENGINE · demo</div>
+<div id="cap">Nova Light Engine</div>
+<div id="chip">BETA b0.12</div>
+<script type="module">
+import { LightEngine } from '../shared/light-engine.js';
+
+const fx = document.getElementById('fx');
+const fig = document.getElementById('figure'), fcx = fig.getContext('2d');
+// size the canvas buffers to the actual viewport (robust in headless where clientW/H can be odd)
+function fit(c){ c.width = innerWidth; c.height = innerHeight; }
+fit(fx); fit(fig); addEventListener('resize', () => { fit(fx); fit(fig); L.fit(); });
+
+const L = new LightEngine(fx, { tier: 'kids', mirror: false });   // mirror:false — the demo drives screen-space joints directly
+L.fit = () => { fx.width = innerWidth; fx.height = innerHeight; };  // override: viewport-pixel buffer, 1:1 with display
+L.fit();
+addEventListener('load', () => { fit(fig); L.fit(); });
+
+// ── a simple normalized skeleton (0..1), animated per beat ──
+const BASE = {
+  nose: { x: .50, y: .17 },
+  lShoulder: { x: .40, y: .30 }, rShoulder: { x: .60, y: .30 },
+  lElbow: { x: .34, y: .44 }, rElbow: { x: .66, y: .44 },
+  lWrist: { x: .30, y: .56 }, rWrist: { x: .70, y: .56 },
+  lIndex: { x: .29, y: .60 }, rIndex: { x: .71, y: .60 },
+  lHip: { x: .44, y: .60 }, rHip: { x: .56, y: .60 },
+  lKnee: { x: .44, y: .80 }, rKnee: { x: .56, y: .80 },
+};
+let joints = clone(BASE);
+function clone(o){ const r = {}; for (const k in o) r[k] = { x: o[k].x, y: o[k].y }; return r; }
+function lerp(a, b, t){ return a + (b - a) * t; }
+
+// derived centers so the engine's shoulderC/hipC/head land right
+function withDerived(j){
+  const o = {};
+  for (const [n, p] of Object.entries(j)) o[n] = { x: p.x, y: p.y, dir: null };
+  o.shoulderC = { x: (j.lShoulder.x + j.rShoulder.x) / 2, y: (j.lShoulder.y + j.rShoulder.y) / 2 };
+  o.hipC = { x: (j.lHip.x + j.rHip.x) / 2, y: (j.lHip.y + j.rHip.y) / 2 };
+  o.head = { x: j.nose.x, y: j.nose.y };
+  return o;
+}
+
+// draw a faint body so the gold lights read against a figure
+function drawFigure(){
+  const w = fig.width, h = fig.height, j = joints, X = p => p.x * w, Y = p => p.y * h;
+  fcx.clearRect(0, 0, w, h);
+  fcx.strokeStyle = 'rgba(190,170,255,.30)'; fcx.lineWidth = Math.max(6, w * .012); fcx.lineCap = 'round';
+  const seg = (a, b) => { fcx.beginPath(); fcx.moveTo(X(a), Y(a)); fcx.lineTo(X(b), Y(b)); fcx.stroke(); };
+  seg(j.lShoulder, j.rShoulder); seg(j.lShoulder, j.lElbow); seg(j.lElbow, j.lWrist); seg(j.lWrist, j.lIndex);
+  seg(j.rShoulder, j.rElbow); seg(j.rElbow, j.rWrist); seg(j.rWrist, j.rIndex);
+  const sc = { x: (j.lShoulder.x + j.rShoulder.x) / 2, y: (j.lShoulder.y + j.rShoulder.y) / 2 };
+  const hc = { x: (j.lHip.x + j.rHip.x) / 2, y: (j.lHip.y + j.rHip.y) / 2 };
+  seg(sc, hc); seg(j.lHip, j.rHip); seg(j.lHip, j.lKnee); seg(j.rHip, j.rKnee);
+  fcx.fillStyle = 'rgba(190,170,255,.30)'; fcx.beginPath(); fcx.arc(X(j.nose), Y(j.nose), w * .03, 0, 7); fcx.fill();
+  requestAnimationFrame(drawFigure);
+}
+drawFigure();
+
+// feed joints to the light engine every frame
+(function feed(){ L.setJoints(withDerived(joints)); requestAnimationFrame(feed); })();
+
+const cap = t => document.getElementById('cap').textContent = t;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+// animate a joint from base to an offset and back over `ms`
+async function move(name, dx, dy, ms){
+  const t0 = performance.now(); const bx = BASE[name].x, by = BASE[name].y;
+  return new Promise(res => { (function step(){ const u = Math.min(1, (performance.now() - t0) / ms);
+    const s = Math.sin(u * Math.PI); joints[name].x = bx + dx * s; joints[name].y = by + dy * s;
+    if (u < 1) requestAnimationFrame(step); else { joints[name].x = bx; joints[name].y = by; res(); } })(); });
+}
+async function moveBoth(a, b, dx, dy, ms){ await Promise.all([move(a, dx, dy, ms), move(b, dx, dy, ms)]); }
+
+async function script(){
+  await sleep(1500);
+  // 1 · shoulder pop LEFT
+  cap('Shoulder pop — left'); L.cue({ joint: 'lShoulder', dir: 'UP', windowMs: 800, leadMs: 700 });
+  await sleep(700); const m1 = move('lShoulder', 0, -0.06, 900); await sleep(300); L.hit('lShoulder', 'iso', 12); L.isoShimmer(); await m1; await sleep(600);
+  // 2 · shoulder pop RIGHT
+  cap('Shoulder pop — right'); L.cue({ joint: 'rShoulder', dir: 'UP', windowMs: 800, leadMs: 700 });
+  await sleep(700); const m2 = move('rShoulder', 0, -0.06, 900); await sleep(300); L.hit('rShoulder', 'iso', 12); L.isoShimmer(); await m2; await sleep(700);
+  // 3 · rib slide RIGHT with the isolation pair (hips + head must stay still → dashed rings)
+  cap('Rib slide — hips stay still (isolation)'); L.cue({ joint: 'shoulderC', dir: 'R', windowMs: 1000, leadMs: 800, still: ['hipC', 'head'] });
+  await sleep(800); const m3 = moveBoth('lShoulder', 'rShoulder', 0.07, 0, 1100); await sleep(400); L.hit('shoulderC', 'iso', 20); L.isoShimmer(); await m3; await sleep(700);
+  // 4 · wave comet, RIGHT arm
+  cap('Wave — right arm'); L.comet(['rShoulder', 'rElbow', 'rWrist', 'rIndex'], 'smooth');
+  const w1 = (async () => { await move('rElbow', 0, -0.05, 200); await move('rWrist', 0, -0.07, 220); await move('rIndex', 0, -0.08, 220); })(); await w1; await sleep(700);
+  // 5 · wave comet, LEFT arm
+  cap('Wave — left arm'); L.comet(['lShoulder', 'lElbow', 'lWrist', 'lIndex'], 'good');
+  const w2 = (async () => { await move('lElbow', 0, -0.05, 200); await move('lWrist', 0, -0.07, 220); await move('lIndex', 0, -0.08, 220); })(); await w2; await sleep(800);
+  // 6 · clap
+  cap('Clap!'); const c1 = moveBoth('lWrist', 'rWrist', 0.19, 0, 500); await sleep(420);
+  L.hit('lWrist', 'good'); L.hit('rWrist', 'good'); L.audio.ding(); await c1; await sleep(700);
+  // 7 · freeze
+  cap('FREEZE — hold like a statue'); L.ice(); L.audio.ding(); await sleep(1600);
+  // 8 · warm (gentle wobble nudge, never red)
+  cap('Wobble — a soft warm nudge (never red)'); L.warm('hipC'); await sleep(1500);
+  cap('Nova Light Engine'); window.__demoDone = true;
+}
+addEventListener('load', () => setTimeout(script, 300));
+</script>
+</body></html>

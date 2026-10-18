@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Copy Nova · Nova</title>
+<!-- beta/copy.html — Copy Nova (6-hour mission, Phase 3). Nova shows a pose; the ghost of it is drawn on the
+     player's own body (shared/nova-lights.js pose()); the judge is beta/lib/copy-game.js (targets measured from
+     Nova's own clips). Star only on a detected, held match; unseen arms skip the round. -->
+<link rel="stylesheet" href="play.css">
+<style>
+#nova{position:fixed;left:12px;bottom:max(96px,13vh);z-index:41;width:min(28vw,150px);aspect-ratio:9/16;object-fit:cover;border-radius:18px;
+  border:3px solid rgba(255,214,90,.7);box-shadow:0 8px 30px rgba(0,0,0,.45);transform:scaleX(-1);display:none;background:#21143d}
+#nova.on{display:block}
+[dir=rtl] #nova{left:auto;right:12px}
+</style>
+</head><body>
+<div id="stage"><video id="cam" playsinline muted></video><canvas id="fx"></canvas></div>
+<video id="nova" playsinline muted loop></video>
+<div id="topbar"><button class="back" id="back">←</button><div id="stars"></div><div id="dots"></div></div>
+<div id="doctor"><div class="outline"></div><div class="msg"></div><div class="bar"><i></i></div><button class="big go"></button></div>
+<div id="ring"></div><div id="card"></div><div id="cap"></div>
+<div class="screen on" id="startScr"><h1 id="title">Copy Nova!</h1><p id="howto"></p><button class="big" id="go">▶</button></div>
+<div class="screen" id="end"><div id="medal"></div><div id="medalStars"></div><p id="endLine"></p>
+  <div class="row"><button class="big" id="again"></button><button class="big alt" id="back2"></button></div><button class="save" id="save"></button></div>
+<script type="module">
+import { createCopyGame, ROUND_POSES } from './lib/copy-game.js';
+import { toJudge } from './lib/kp.js';
+import { createLights } from '../shared/nova-lights.js';
+import { Q, getLang, applyLang, COMMON, createHud, caption, card, ring, medalScreen, createSource, createRecorder, guideFor } from './lib/play.js';
+import { createNovaEvents } from './lib/events.js';
+import { runDoctor } from './lib/doctor.js';
+
+const $ = id => document.getElementById(id);
+const lang = getLang(); applyLang(lang);
+const L = COMMON[lang];
+const TXT = {
+  en: { title: 'Copy Nova!', howto: 'Nova shows a pose. Make the same shape with your body — the light shows you where!', show: 'Copy me!',
+        star: 'You got it! ⭐', notyet: 'Almost — next one!',
+        poses: { armsUp: 'Both arms up!', armsOut: 'Arms out wide!', star: 'Be a star!', bear: 'Bear claws!', leftUp: 'Your LEFT hand up!', rightUp: 'Your RIGHT hand up!', handsHead: 'Hands on your head!' } },
+  he: { title: 'תעשו כמו נובה!', howto: 'נובה מראה תנועה. עושים אותה צורה עם הגוף — האור מראה איפה!', show: 'תעשו כמוני!',
+        star: 'יש! ⭐', notyet: 'כמעט — לתנועה הבאה!',
+        poses: { armsUp: 'שתי ידיים למעלה!', armsOut: 'ידיים לצדדים!', star: 'כוכב!', bear: 'ציפורני דוב!', leftUp: 'יד שמאל למעלה!', rightUp: 'יד ימין למעלה!', handsHead: 'ידיים על הראש!' } },
+}[lang];
+const EMO = { armsUp: '🙌', armsOut: '🤸', star: '⭐', bear: '🐻', leftUp: '🙋', rightUp: '🙋', handsHead: '🙆' };
+/* Nova's own demo of each pose (the clips the targets were measured on), shown mirrored like the player's camera */
+const DEMO = { armsUp: 'pose-armsup', star: 'pose-star', bear: 'pose-bear', leftUp: 'own-left-up', rightUp: 'own-right-up' };
+$('title').textContent = TXT.title; $('howto').textContent = TXT.howto; $('back').textContent = lang === 'he' ? '→' : '←';
+$('back').onclick = () => location.href = 'index.html' + location.search;
+
+const fast = Q.get('fast') === '1';
+const lights = createLights($('fx'), { video: $('cam') });
+const rec = createRecorder('copy', lang);
+const brain = createNovaEvents('copy', ev => rec.nova(ev));     // reaction triggers for the avatar: window.novaEvents
+let doc = null, game, hud, src, phaseCap = ['', ''], ended = false, lastFrame = null;
+function say(text, cls = ''){ phaseCap = [text, cls]; if (game?.state.seen !== false) caption(text, cls); }
+function demo(pose){ const v = $('nova'); if (!pose || !DEMO[pose]){ v.classList.remove('on'); v.pause(); return; }
+  v.src = `../test/clips/src/${DEMO[pose]}.webm`; v.classList.add('on'); v.currentTime = 0; v.play().catch(() => {}); }
+
+function onEvent(type, d){
+  const t = performance.now() / 1000; rec.event(type, d, t); brain(type, d);
+  if (type === 'phase'){
+    if (d.phase === 'show'){ hud.now(d.round); ring(null); lights.pose(d.pose, { l: 0, r: 0 }); card(TXT.poses[d.pose], EMO[d.pose]); say(TXT.show + ' ' + TXT.poses[d.pose], 'gold'); demo(d.pose);
+      if (d.round > 1) src.next(); }
+    if (d.phase === 'match'){ ring(0); say(TXT.poses[d.pose], 'wait'); }
+  }
+  if (type === 'progress') lights.pose(d.pose, { l: d.l, r: d.r, wrong: d.wrong });
+  if (type === 'hold' && game.state.phase === 'match') ring(d.p);
+  if (type === 'star'){ hud.star(); hud.mark(d.round, 'star'); ring(1, true); lights.pose(d.pose, { l: 1, r: 1 }); lights.burst('nose', 'green'); lights.burst('lWrist', 'gold', 40); lights.burst('rWrist', 'gold', 40); say(TXT.star, 'good');
+    setTimeout(() => { lights.pose(null); card(null); }, 900); }
+  if (type === 'notyet'){ hud.mark(d.round, 'notyet'); ring(null); lights.pose(null); card(null); say(TXT.notyet, 'wait'); }
+  if (type === 'skip'){ hud.mark(d.round, 'skip'); ring(null); lights.pose(null); card(null); lights.guide('tooClose'); say(L.cantSee, 'wait'); }
+  if (type === 'seen'){ if (d.seen){ lights.guide(null); caption(...phaseCap); } else { lights.guide(guideFor(lastFrame)); caption(L.cantSee, 'wait'); } }
+  if (type === 'end') finish(d);
+}
+
+function finish(d){
+  ended = true; src.stop(); demo(null); card(null); ring(null); caption(''); lights.clearAll(); rec.end(d, src.state);
+  medalScreen({ ...d, lang, onAgain: () => location.reload(), onBack: () => location.href = 'index.html' + location.search, onSave: () => { rec.save(); $('save').textContent = '✓ ' + L.saved; } });
+}
+
+async function begin(){
+  $('startScr').classList.remove('on');
+  const poses = (Q.get('poses') || '').split(',').filter(Boolean);
+  game = createCopyGame({ poses: poses.length ? poses : ROUND_POSES, pace: fast ? { showS: 1.2, resultS: 1.2 } : {}, on: onEvent });
+  hud = createHud((poses.length ? poses : ROUND_POSES).length);
+  src = await createSource($('cam'), (frame, t) => {
+    if (ended) return; lastFrame = frame;
+    const k = toJudge(frame); if (k) lights.feed(k);
+    if (doc){ doc(frame); return; }                       // Camera Doctor first — the game isn't running yet
+    if (src?.state.w) game.setSize(src.state.w, src.state.h);
+    rec.frame(frame, t, src?.state); game.feed(frame, t); game.tick(t);
+  });
+  if (!src.state.modelOk) caption(src.state.cameraError ? L.noCamera : L.cantSee, 'wait');
+  src.start();
+  if (Q.get('checked') !== '1' && Q.get('doctor') !== '0') await runDoctor({ lights, lang, onFrameHook: h => doc = h });
+  game.start(performance.now() / 1000);
+  setInterval(() => { if (!ended) game.tick(performance.now() / 1000); }, 100);
+}
+$('go').textContent = '▶ ' + L.start; $('go').onclick = begin;
+if (Q.get('autostart') === '1') begin();
+</script>
+</body></html>

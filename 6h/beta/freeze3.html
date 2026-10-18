@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Freeze · Nova</title>
+<!-- beta/freeze3.html — Animal Freeze, honest (6-hour mission, Phase 1). Judge: beta/freeze2 (measured) via
+     beta/lib/freeze-game.js. The live pod/pages/animal-freeze.html is NOT touched (FREEZE-APPROVED lock).
+     Named freeze3 because beta/freeze.html is the pod-served Freeze beta (base href → Pages); overwriting it would
+     change what the pod serves. [CLI-FILL] path chosen to leave the pod copy alone. -->
+<link rel="stylesheet" href="play.css">
+</head><body>
+<div id="stage"><video id="cam" playsinline muted></video><canvas id="fx"></canvas></div>
+<div id="topbar"><button class="back" id="back">←</button><div id="stars"></div><div id="dots"></div></div>
+<div id="doctor"><div class="outline"></div><div class="msg"></div><div class="bar"><i></i></div><button class="big go"></button></div>
+<div id="ring"></div><div id="card"></div><div id="cap"></div>
+<div class="screen on" id="startScr"><h1 id="title">Freeze!</h1><p id="howto"></p><button class="big" id="go">▶</button></div>
+<div class="screen" id="end"><div id="medal"></div><div id="medalStars"></div><p id="endLine"></p>
+  <div class="row"><button class="big" id="again"></button><button class="big alt" id="back2"></button></div><button class="save" id="save"></button></div>
+<script type="module">
+import { createFreezeGame } from './lib/freeze-game.js';
+import { toJudge } from './lib/kp.js';
+import { createLights } from '../shared/nova-lights.js';
+import { Q, getLang, applyLang, COMMON, createHud, caption, card, ring, medalScreen, createSource, createRecorder, audio, guideFor } from './lib/play.js';
+import { createNovaEvents } from './lib/events.js';
+import { runDoctor } from './lib/doctor.js';
+
+const $ = id => document.getElementById(id);
+const lang = getLang(); applyLang(lang);
+const voiceDir = lang === 'he' ? (Q.get('g') === 'm' ? 'he-m' : 'he-f') : 'en';
+const TXT = {
+  en: { title: 'Freeze!', howto: 'Dance while the music plays. When it stops — FREEZE like the animal!', calib: 'Stand still for a moment…', dance: 'Dance! 💃',
+        freeze: a => `FREEZE like a ${a}!`, star: 'Frozen! ⭐', notyet: "Next one's yours!",
+        animals: { flamingo: 'flamingo', bear: 'bear', frog: 'frog', star: 'star', statue: 'statue' } },
+  he: { title: 'קופאים!', howto: 'רוקדים כשיש מוזיקה. כשהיא נעצרת — קופאים כמו החיה!', calib: 'רגע אחד בלי לזוז…', dance: 'רוקדים! 💃',
+        freeze: a => `קופאים כמו ${a}!`, star: 'קפאת! ⭐', notyet: 'הפעם הבאה שלך!',
+        animals: { flamingo: 'פלמינגו', bear: 'דוב', frog: 'צפרדע', star: 'כוכב', statue: 'פסל' } },
+}[lang];
+const L = COMMON[lang];
+const EMO = { flamingo: '🦩', bear: '🐻', frog: '🐸', star: '⭐', statue: '🗿' };
+$('title').textContent = TXT.title; $('howto').textContent = TXT.howto; $('back').textContent = lang === 'he' ? '→' : '←';
+$('back').onclick = () => location.href = 'index.html' + location.search;
+
+const tune = (await (await fetch('freeze2/script.json')).json()).tune;
+const fast = Q.get('fast') === '1';
+const pace = fast ? { danceS: [2.6, 3.2], resultS: 1.2 } : {};
+if (+Q.get('rounds') > 0) pace.rounds = +Q.get('rounds');        // shorter games for the lobby demo
+const line = id => audio(`../audio/freeze2/${voiceDir}/${id}.${1 + Math.floor(Math.random() * 3)}.mp3`);
+const music = new Audio('../freezegame/animal-freeze-song.mp3'); music.loop = true; music.volume = 0.6;
+
+const lights = createLights($('fx'), { video: $('cam') });
+const rec = createRecorder('freeze', lang);
+const brain = createNovaEvents('freeze', ev => rec.nova(ev));     // reaction triggers for the avatar: window.novaEvents
+let doc = null, game, hud, src, phaseCap = ['', ''], freezeAt = 0, holdS = 2.5, animal = 'statue', ended = false, lastFrame = null;
+
+function say(text, cls = ''){ phaseCap = [text, cls]; if (game?.state.seen !== false) caption(text, cls); }
+
+function onEvent(type, d){
+  const t = performance.now() / 1000; rec.event(type, d, t); brain(type, d);
+  if (type === 'phase'){
+    if (d.phase === 'calib') say(TXT.calib, 'wait');
+    if (d.phase === 'dance'){ card(null); ring(null); lights.ice(false); lights.speedGlow(true); hud.now(d.round); say(TXT.dance, 'gold'); music.play().catch(() => {});
+      if (d.round > 1) src.next(); }
+  }
+  if (type === 'calibrated') line('go.countdown');
+  if (type === 'freeze'){ animal = d.animal; music.pause(); line('sting.freeze'); lights.speedGlow(false); lights.ice(true); freezeAt = t; holdS = game.pace.holdS;
+    card(TXT.animals[animal], EMO[animal]); say(TXT.freeze(TXT.animals[animal]), 'wait'); }
+  if (type === 'star'){ hud.star(); hud.mark(d.round, 'star'); ring(1, true); lights.ice(false); lights.snow('nose'); lights.burst('nose', 'gold'); line('held.' + (animal === 'statue' ? 'statue' : animal)); say(TXT.star, 'good'); }
+  if (type === 'notyet'){ hud.mark(d.round, 'notyet'); ring(null); lights.ice(false); line('missed'); say(TXT.notyet, 'wait'); }
+  if (type === 'skip'){ hud.mark(d.round, 'skip'); ring(null); lights.ice(false); lights.guide('tooClose'); say(L.cantSee, 'wait'); }
+  if (type === 'seen'){ if (d.seen){ lights.guide(null); caption(...phaseCap); } else { lights.guide(guideFor(lastFrame)); caption(L.cantSee, 'wait'); } }
+  if (type === 'end') finish(d);
+}
+
+function finish(d){
+  ended = true; music.pause(); src.stop(); card(null); ring(null); caption(''); lights.clearAll();
+  rec.end(d, src.state); if (d.medal) line('fallback.end');
+  medalScreen({ ...d, lang, onAgain: () => location.reload(), onBack: () => location.href = 'index.html' + location.search, onSave: () => { rec.save(); $('save').textContent = '✓ ' + L.saved; } });
+}
+
+async function begin(){
+  $('startScr').classList.remove('on');
+  game = createFreezeGame({ tune, pace, on: onEvent });
+  hud = createHud(game.pace.rounds);
+  src = await createSource($('cam'), (frame, t) => {
+    if (ended) return; lastFrame = frame;
+    const k = toJudge(frame); if (k) lights.feed(k);
+    if (doc){ doc(frame); return; }                       // Camera Doctor first — the game isn't running yet
+    rec.frame(frame, t, src?.state); game.feed(frame, t); game.tick(t);
+    if (game.state.phase === 'freeze') ring(Math.min(1, (t - freezeAt) / holdS));
+  });
+  if (!src.state.modelOk) caption(src.state.cameraError ? L.noCamera : L.cantSee, 'wait');
+  src.start();
+  if (Q.get('checked') !== '1' && Q.get('doctor') !== '0') await runDoctor({ lights, lang, onFrameHook: h => doc = h });
+  game.start(performance.now() / 1000);
+  setInterval(() => { if (!ended) game.tick(performance.now() / 1000); }, 100);     // the game always ends, frames or not
+}
+$('go').textContent = '▶ ' + L.start; $('go').onclick = begin;
+if (Q.get('autostart') === '1') begin();
+</script>
+</body></html>

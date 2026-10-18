@@ -1,0 +1,91 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nova — wave comet (mechanic proof)</title>
+<style>
+  html,body{margin:0;height:100%;background:radial-gradient(120% 120% at 50% 20%,#3a1d6e 0%,#1a0b33 55%,#0b0618 100%);overflow:hidden;font-family:"Baloo 2",system-ui,sans-serif}
+  #stage{position:fixed;inset:0}
+  #fig{position:absolute;inset:0;z-index:1}
+  #fx{position:absolute;inset:0;z-index:2}
+  #cap{position:fixed;left:0;right:0;bottom:6vh;text-align:center;z-index:3;color:#fff;font-weight:800;font-size:clamp(22px,5vw,40px);text-shadow:0 2px 20px rgba(0,0,0,.6)}
+  #tag{position:fixed;top:14px;left:14px;z-index:3;color:#ffdf7e;font-weight:700;font-size:13px;background:rgba(10,6,25,.6);padding:4px 10px;border-radius:8px}
+  #chip{position:fixed;bottom:10px;left:10px;z-index:3;background:#7c5cbf;color:#fff;padding:2px 9px;border-radius:8px;font:600 11px/1 "Nunito",sans-serif}
+</style></head>
+<body>
+<div id="stage"><canvas id="fig"></canvas><canvas id="fx"></canvas></div>
+<div id="tag">WAVE COMET · mechanic proof (driven wave)</div>
+<div id="cap">the comet rides a real wave</div>
+<div id="chip">BETA b0.18</div>
+<script type="module">
+import { LightEngine } from '../shared/light-engine.js';
+import { MoverEngine } from '../shared/mover-engine.js';
+import { WaveRule } from '../shared/mover-rules.js';
+
+const fig = document.getElementById('fig'), fcx = fig.getContext('2d'), fx = document.getElementById('fx');
+function fit(c){ c.width = innerWidth; c.height = innerHeight; }
+fit(fig); fit(fx); addEventListener('resize', () => { fit(fig); fit(fx); L.fit(); });
+const L = new LightEngine(fx, { tier: 'kids', mirror: false });
+L.fit = () => { fx.width = innerWidth; fx.height = innerHeight; }; L.fit();
+const E = new MoverEngine();
+const CHAIN_R = ['rShoulder', 'rElbow', 'rWrist', 'rIndex'];
+const waveR = new WaveRule(E, 'R');
+
+// a simple upper body; the RIGHT arm is driven through a traveling wave (a bump runs shoulder→fingertip)
+const BASE = {
+  nose: { x: .50, y: .18 }, lShoulder: { x: .40, y: .35 }, rShoulder: { x: .56, y: .35 },
+  rElbow: { x: .69, y: .40 }, rWrist: { x: .82, y: .45 }, rIndex: { x: .90, y: .48 },
+  lElbow: { x: .28, y: .44 }, lWrist: { x: .18, y: .52 }, lIndex: { x: .13, y: .55 },
+  lHip: { x: .45, y: .64 }, rHip: { x: .55, y: .64 },
+};
+const clone = o => { const r = {}; for (const k in o) r[k] = { x: o[k].x, y: o[k].y }; return r; };
+function withDerived(j){ const o = {}; for (const [n, p] of Object.entries(j)) o[n] = { x: p.x, y: p.y };
+  o.shoulderC = { x: (j.lShoulder.x + j.rShoulder.x) / 2, y: (j.lShoulder.y + j.rShoulder.y) / 2 };
+  o.hipC = { x: (j.lHip.x + j.rHip.x) / 2, y: (j.lHip.y + j.rHip.y) / 2 }; o.head = { x: j.nose.x, y: j.nose.y }; return o; }
+
+// the traveling wave: a bump reaches arm-joint k (1=elbow,2=wrist,3=index) at center times 200ms apart
+const PERIOD = 1.1, AMP = 0.14, HALF = 0.11;   // short period → cycles overlap → a wave is always traveling
+function lift(k, tSec){ const local = tSec % PERIOD, center = 0.12 + k * 0.20, d = Math.abs(local - center); return d < HALF ? AMP * (1 - d / HALF) : 0; }
+
+function drawFig(j){ const w = fig.width, h = fig.height, X = p => p.x * w, Y = p => p.y * h;
+  fcx.clearRect(0, 0, w, h); fcx.strokeStyle = 'rgba(190,170,255,.28)'; fcx.lineWidth = Math.max(8, w * .014); fcx.lineCap = 'round';
+  const seg = (a, b) => { fcx.beginPath(); fcx.moveTo(X(a), Y(a)); fcx.lineTo(X(b), Y(b)); fcx.stroke(); };
+  seg(j.lShoulder, j.rShoulder); seg(j.rShoulder, j.rElbow); seg(j.rElbow, j.rWrist); seg(j.rWrist, j.rIndex);
+  seg(j.lShoulder, j.lElbow); seg(j.lElbow, j.lWrist);
+  const sc = { x: (j.lShoulder.x + j.rShoulder.x) / 2, y: (j.lShoulder.y + j.rShoulder.y) / 2 }, hc = { x: (j.lHip.x + j.rHip.x) / 2, y: (j.lHip.y + j.rHip.y) / 2 };
+  seg(sc, hc); seg(j.lHip, j.rHip);
+  fcx.fillStyle = 'rgba(190,170,255,.28)'; fcx.beginPath(); fcx.arc(X(j.nose), Y(j.nose), w * .03, 0, 7); fcx.fill(); }
+
+const t0 = performance.now();
+let lastPose = 0;
+function frame(){
+  const now = performance.now();
+  if (now - lastPose >= 33) {                     // feed pose + detection at ~30fps (real MediaPipe cadence)
+    lastPose = now; const tSec = (now - t0) / 1000;
+    const j = clone(BASE);
+    j.rElbow.y = BASE.rElbow.y - lift(1, tSec); j.rWrist.y = BASE.rWrist.y - lift(2, tSec); j.rIndex.y = BASE.rIndex.y - lift(3, tSec);
+    drawFig(j);
+    const out = E.update(withDerived(j), now); L.setJoints(out);
+    const r = waveR.check(now); if (r?.hit) L.cometHit(r.quality, waveR);
+    const ph = waveR.phase(now);
+    window.__dbg = { active: ph.active, head: +ph.head.toFixed(2), glow: +((L.cometLiveStates && L.cometLiveStates[0] && L.cometLiveStates[0].glow) || 0).toFixed(2), peaksHit: ph.peaks.filter(p => p != null).length };
+  }
+  requestAnimationFrame(frame);
+}
+
+const cap = t => document.getElementById('cap').textContent = t;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function run(){
+  E.startCal(); await sleep(600); E.finishCal();
+  L.cometLive(waveR, CHAIN_R);
+  setInterval(() => L.cometCue(CHAIN_R), 1000);   // ISOLATION: timer cue sweep uses the same draw() closure — if THIS paints, draw() works
+  window.__ready = true;
+  cap('the comet rides the DETECTED wave'); await sleep(4500);
+  cap('shoulder → elbow → wrist → fingertip'); await sleep(4500);
+  cap('a sleeve of light on the arm — not dots'); await sleep(4500);
+  cap('bright fingertip flick = the hit'); await sleep(4500);
+  cap('Nova — the wave comet'); await sleep(1500);
+  window.__demoDone = true;
+}
+frame();
+addEventListener('load', () => setTimeout(run, 300));
+</script>
+</body></html>

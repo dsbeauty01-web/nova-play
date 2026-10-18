@@ -1,0 +1,20 @@
+{
+ "_note": "Recorded once through her Realtime voice (tools/capture_realtime_lines.py) — one voice. HE: lines-he-m.json / lines-he-f.json (same ids; gender only where the child is addressed).",
+ "go.countdown":    "Ready? Three… two… one… DANCE!",
+ "sting.freeze":    "FREEZE!",
+ "warn.ready":      "Get ready…",
+ "held.statue":     "STATUE!",
+ "held.flamingo":   "Perfect flamingo!",
+ "held.frog":       "Rock-solid frog!",
+ "held.bear":       "Steady bear!",
+ "held.star":       "SUPERSTAR freeze!",
+ "almost":          "Almost! So close!",
+ "missed":          "Next one's yours!",
+ "fakeout":         "Hehe — I tricked you!",
+ "tr.round2":       "Round two — faster!",
+ "tr.round3":       "Last round!",
+ "tr.last":         "Last one — the STAR freeze!",
+ "fallback.card1":  "Amazing! Round two!",
+ "fallback.card2":  "So good! Last round!",
+ "fallback.end":    "What a freezer! See you tomorrow!"
+}

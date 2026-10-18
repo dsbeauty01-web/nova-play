@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Play with Nova</title>
+<!-- beta/index.html — the one launcher (6-hour mission, Phase 5): camera check first (non-blocking, 6 s), then
+     Freeze · Copy Nova · Groove. EN/HE toggle remembered on this device. -->
+<link rel="stylesheet" href="play.css">
+</head><body>
+<div id="stage"><video id="cam" playsinline muted></video><canvas id="fx"></canvas></div>
+<div id="doctor"><div class="outline"></div><div class="msg"></div><div class="bar"><i></i></div><button class="big go"></button></div>
+<div class="launch screen" id="menu" style="display:none">
+  <div class="lang" role="group" aria-label="Language"><button id="en" aria-pressed="true">English</button><button id="he" aria-pressed="false">עברית</button></div>
+  <h1 id="hi">Play with Nova!</h1><p id="sub"></p>
+  <div class="games">
+    <button class="game" id="gFreeze"><span class="emo">❄️</span><div><b id="nFreeze">Freeze</b><span id="dFreeze"></span></div></button>
+    <button class="game" id="gCopy"><span class="emo">🙌</span><div><b id="nCopy">Copy Nova</b><span id="dCopy"></span></div></button>
+    <button class="game" id="gGroove"><span class="emo">🎵</span><div><b id="nGroove">Groove</b><span id="dGroove"></span></div></button>
+  </div>
+</div>
+<script type="module">
+import { createLights } from '../shared/nova-lights.js';
+import { toJudge } from './lib/kp.js';
+import { Q, getLang, setLang, applyLang, createSource } from './lib/play.js';
+import { runDoctor } from './lib/doctor.js';
+
+const $ = id => document.getElementById(id);
+const T = {
+  en: { hi: 'Play with Nova!', sub: 'Pick a game', check: 'Stand so your whole body is in the picture', good: 'Perfect — I can see you!', go: "Let's go ▶",
+        nFreeze: 'Freeze', dFreeze: 'Dance — then freeze like an animal!', nCopy: 'Copy Nova', dCopy: 'Make the same shape as Nova', nGroove: 'Groove', dGroove: 'Bounce and sway to the beat' },
+  he: { hi: 'משחקים עם נובה!', sub: 'בוחרים משחק', check: 'עומדים כך שכל הגוף נכנס לתמונה', good: 'מעולה — אני רואה אותך!', go: 'יוצאים לדרך ▶',
+        nFreeze: 'קופאים', dFreeze: 'רוקדים — ואז קופאים כמו חיה!', nCopy: 'תעשו כמו נובה', dCopy: 'עושים אותה צורה כמו נובה', nGroove: 'גרוב', dGroove: 'קופצים ומתנדנדים עם הביט' },
+};
+let lang = getLang();
+function paint(){ applyLang(lang); const t = T[lang];
+  for (const k of ['hi', 'sub', 'nFreeze', 'dFreeze', 'nCopy', 'dCopy', 'nGroove', 'dGroove']) $(k).textContent = t[k];
+  $('en').setAttribute('aria-pressed', lang === 'en'); $('he').setAttribute('aria-pressed', lang === 'he');
+}
+$('en').onclick = () => { lang = 'en'; setLang('en'); paint(); };
+$('he').onclick = () => { lang = 'he'; setLang('he'); paint(); };
+const keep = () => { const q = new URLSearchParams(location.search); q.delete('lang'); q.set('lang', lang); q.delete('nocheck'); q.set('checked', '1'); return '?' + q; };
+$('gFreeze').onclick = () => location.href = 'freeze3.html' + keep();
+$('gCopy').onclick = () => location.href = 'copy.html' + keep();
+$('gGroove').onclick = () => location.href = 'groove.html' + keep();
+
+/* Camera Doctor first (beta/lib/doctor.js): arrows show where to stand; never blocks — on by itself after 6 s */
+let done = false;
+function menu(){ if (done) return; done = true; $('menu').style.display = 'flex'; }
+paint();
+if (Q.get('nocheck') === '1') menu();
+else {
+  const lights = createLights($('fx'), { video: $('cam') }); let hook = null;
+  const src = await createSource($('cam'), frame => { const k = toJudge(frame); if (k) lights.feed(k); hook?.(frame); });
+  src.start();
+  await runDoctor({ lights, lang, onFrameHook: h => hook = h });
+  src.stop(); lights.clearAll(); menu();
+}
+</script>
+</body></html>
