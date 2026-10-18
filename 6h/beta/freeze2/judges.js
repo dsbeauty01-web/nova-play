@@ -29,6 +29,12 @@ export function createJudges(T){
           s += d; n++;
         }
       }
+      /* [2026-10-18 MEASURED] an EXACT duplicate of the previous pose is not "no movement" — it is the same camera
+         frame seen again (a 60 Hz page loop over a ~30 fps camera, or a replay clock finer than the clip). Folding
+         its 0 displacement into the filter drags energy to zero every other update: Refael's real arm-waving went
+         from 13% held (fed once per frame) to 100% held (fed at 60 Hz) — "every freeze a star". A real camera never
+         returns bit-identical keypoints, so a duplicate is dropped: no energy update, no timestamp advance. */
+      if (n >= 3 && s === 0) return;
       if (n >= 3) st.energy = st.energy * 0.6 + ((s / n) / dt) * 0.4;
     }
     st.prev = k; st.prevT = t;

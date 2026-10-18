@@ -104,17 +104,36 @@ export async function createSource(video, onFrame, { base = '../' } = {}){
      at 30 · 12 · 6 fps. ?skip=1 turns it off. */
   let busy = false, nFrame = 0, detMs = 0;
   const allowSkip = Q.get('skip') !== '1';
+  /* [2026-10-18 MEASURED] feed the game ONE update per NEW video frame, never per screen refresh. rAF runs at 60 Hz,
+     the camera gives ~30 fps: every other detection saw the same frame and reported zero motion, which dragged the
+     judge's energy to zero (Refael's real arm-waving: 13% held per-frame → 100% held at 60 Hz = "freeze always
+     scores"). Chrome's requestVideoFrameCallback fires once per new frame; elsewhere we gate on video.currentTime. */
+  let newFrame = true, lastVT = -1, lastReplayFrame = null;
+  if (typeof video.requestVideoFrameCallback === 'function'){ newFrame = false; const onVF = () => { newFrame = true; video.requestVideoFrameCallback(onVF); }; video.requestVideoFrameCallback(onVF); }
   async function step(){
     if (!S.running) return;
     const t = performance.now() / 1000;
     nFrame++;
     if (S.kind === 'camera' && allowSkip && detMs > 25 && nFrame % 2){ requestAnimationFrame(step); return; }
+    if (S.kind === 'camera' && !failMode){
+      const fresh = typeof video.requestVideoFrameCallback === 'function' ? newFrame : video.currentTime !== lastVT;
+      if (!fresh){ requestAnimationFrame(step); return; }
+      newFrame = false; lastVT = video.currentTime;
+    }
     if (!busy){
       busy = true;
       let frame = null;
       try {
         if (failMode) throw new Error('detector failed (test mode)');
-        if (S.kind === 'replay') frame = frameAt(S.rec, video.currentTime);
+        if (S.kind === 'replay'){
+          // [2026-10-18] the replay clock: the clip's video when it is really playing, otherwise the wall clock —
+          // a keypoint-only recording (every "Save my play" file, Refael's real-camera clips) has no video, and a
+          // clock stuck at 0 replays ONE frame forever = zero motion = a fake "held" every round.
+          const videoClock = video.readyState >= 2 && !video.paused && video.duration > 0 && isFinite(video.duration);
+          if (!videoClock && S.t0 == null) S.t0 = t;
+          frame = frameAt(S.rec, videoClock ? video.currentTime : (t - S.t0));
+          if (frame === lastReplayFrame){ busy = false; requestAnimationFrame(step); return; }   // same recorded frame → not a new update
+          lastReplayFrame = frame; }
         else if (det && video.videoWidth){ const d0 = performance.now(); const poses = await det.estimatePoses(video, { flipHorizontal: false });
           detMs = detMs ? detMs * 0.8 + (performance.now() - d0) * 0.2 : performance.now() - d0; S.detMs = detMs; S.w = video.videoWidth; S.h = video.videoHeight;
           frame = fromMoveNet(poses?.[0]?.keypoints, video.videoWidth, video.videoHeight); }
